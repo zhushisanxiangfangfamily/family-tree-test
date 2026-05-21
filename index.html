@@ -489,6 +489,11 @@ footer{display:none}
 .bday-name{font-size:1.1rem;color:#4a3000;margin-bottom:4px}
 .bday-age{font-size:2.5rem;font-weight:bold;color:var(--primary);margin-bottom:14px}
 .bday-age span{font-size:1rem;color:var(--text-light);font-weight:normal}
+.bday-names-area{margin-bottom:12px}
+.bday-person{display:inline-flex;align-items:center;gap:8px;background:var(--hero-gradient);border-radius:20px;padding:6px 16px;margin:4px}
+.bday-person-name{font-size:1.1rem;font-weight:bold;color:#5D2E0C}
+.bday-person-age{font-size:.9rem;color:var(--text-light)}
+.bday-together{font-size:.8rem;color:var(--accent);margin-top:6px;font-style:italic}
 .bday-msg{width:100%;height:80px;border:1px solid var(--border);border-radius:10px;padding:10px;font-size:.85rem;font-family:inherit;resize:none;margin-bottom:12px;box-sizing:border-box;outline:none}
 .bday-msg:focus{border-color:var(--accent)}
 .bday-actions{display:flex;gap:10px;justify-content:center}
@@ -3951,10 +3956,9 @@ function checkBirthdays() {
     });
 
     if (birthdays.length > 0) {
-      // Queue all birthdays, show one by one
-      _bdayQueue = birthdays.slice();
+      _bdayPeople = birthdays.slice();
       setTimeout(function() {
-        showNextBirthday();
+        showBirthdayPopup(_bdayPeople);
       }, 500);
     }
 
@@ -3963,61 +3967,74 @@ function checkBirthdays() {
   } catch(e) {}
 }
 
-var _bdayQueue = [];
+var _bdayPeople = [];
 
-function showNextBirthday() {
-  if (_bdayQueue.length === 0) return;
-  var person = _bdayQueue.shift();
-  showBirthdayPopup(person, _bdayQueue.length);
-}
-
-function showBirthdayPopup(person, remaining) {
-  _bdayCurrentPerson = person;
+function showBirthdayPopup(people) {
+  _bdayPeople = people;
   var today = new Date();
-  var bd = parseBirthDate(person.birth);
-  var age = bd.year ? (today.getFullYear() - parseInt(bd.year)) : '?';
 
-  var titleEl = document.querySelector('.bday-title');
-  if (remaining > 0) {
-    titleEl.innerHTML = '&#127881; 生日快乐！（还有' + remaining + '人）';
+  // Build names + ages list
+  var namesHTML = '';
+  var greetingMsg = '';
+  var placeholderMsg = '';
+
+  if (people.length === 1) {
+    var p = people[0];
+    var age = p.birth ? (today.getFullYear() - parseInt(parseBirthDate(p.birth).year || today.getFullYear())) : '?';
+    namesHTML = '<div class="bday-name">' + p.name + '</div>' +
+      '<div class="bday-age">' + age + '<span> 岁</span></div>';
+    greetingMsg = '🎉 生日快乐！';
+    placeholderMsg = '写下你的生日祝福...💌';
   } else {
-    titleEl.innerHTML = '&#127881; 生日快乐！';
+    greetingMsg = '🎉 同一天生日，双倍快乐！';
+    placeholderMsg = '写下对他们的共同祝福...💌';
+    namesHTML = '';
+    for (var i = 0; i < people.length; i++) {
+      var p = people[i];
+      var age = p.birth ? (today.getFullYear() - parseInt(parseBirthDate(p.birth).year || today.getFullYear())) : '?';
+      namesHTML += '<div class="bday-person">' +
+        '<span class="bday-person-name">' + p.name + '</span>' +
+        '<span class="bday-person-age">' + age + '岁</span>' +
+        '</div>';
+    }
+    namesHTML += '<div class="bday-together">🌟 同月同日，家族缘分</div>';
   }
 
-  document.getElementById('bday-name').textContent = person.name;
-  document.getElementById('bday-age').innerHTML = age + '<span> 岁</span>';
+  document.querySelector('.bday-title').innerHTML = greetingMsg;
+  document.getElementById('bday-names-area').innerHTML = namesHTML;
+  document.getElementById('bday-msg').placeholder = placeholderMsg;
   document.getElementById('bday-msg').value = '';
   document.getElementById('bday-overlay').style.display = 'flex';
 }
 
 function closeBirthdayPopup() {
   document.getElementById('bday-overlay').style.display = 'none';
-  _bdayCurrentPerson = null;
-  // Show next birthday in queue
-  if (_bdayQueue.length > 0) {
-    setTimeout(function() { showNextBirthday(); }, 300);
-  }
+  _bdayPeople = [];
 }
 
 function sendBirthdayLetter() {
-  if (!_bdayCurrentPerson) return;
+  if (!_bdayPeople.length) return;
   var msg = document.getElementById('bday-msg').value.trim();
   if (!msg) { closeBirthdayPopup(); return; }
 
-  var bd = parseBirthDate(_bdayCurrentPerson.birth);
-  var age = bd.year ? (new Date().getFullYear() - parseInt(bd.year)) : '?';
-
   var letters = getLetters();
-  letters.push({
-    id: Date.now(),
-    memberId: _bdayCurrentPerson.id,
-    memberName: _bdayCurrentPerson.name,
-    age: age,
-    message: msg,
-    created: Date.now()
-  });
-  saveLetters(letters);
 
+  // Save a letter for each birthday person
+  for (var i = 0; i < _bdayPeople.length; i++) {
+    var p = _bdayPeople[i];
+    var bd = parseBirthDate(p.birth);
+    var age = bd.year ? (new Date().getFullYear() - parseInt(bd.year)) : '?';
+    letters.push({
+      id: Date.now() + i,
+      memberId: p.id,
+      memberName: p.name,
+      age: age,
+      message: msg,
+      created: Date.now()
+    });
+  }
+
+  saveLetters(letters);
   closeBirthdayPopup();
   updateMailBadge();
 }
@@ -4119,8 +4136,7 @@ if ('serviceWorker' in navigator) {
   <div class="bday-card">
     <div class="bday-icon">🎂</div>
     <div class="bday-title">🎉 生日快乐！</div>
-    <div class="bday-name" id="bday-name"></div>
-    <div class="bday-age" id="bday-age"></div>
+    <div class="bday-names-area" id="bday-names-area"></div>
     <textarea class="bday-msg" id="bday-msg" placeholder="写下你的生日祝福...💌"></textarea>
     <div class="bday-actions">
       <button class="bday-close" onclick="closeBirthdayPopup()">关闭</button>
