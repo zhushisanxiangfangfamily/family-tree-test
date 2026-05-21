@@ -171,27 +171,6 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
 .admin-panel-title{font-size:.9rem;color:var(--primary);font-weight:600;margin-bottom:10px}
 .admin-actions{display:flex;gap:8px;flex-wrap:wrap}
 
-/* ===== SELF-SELECT ===== */
-.self-select-hero{margin-bottom:14px}
-.self-select-hero .self-select-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;
-  padding:14px 18px;border-radius:12px;flex-wrap:wrap}
-.self-select-hero .self-select-inner>div{display:flex;flex-direction:column;gap:3px;min-width:0}
-.self-select-hero strong{font-size:.95rem}
-.self-select-banner{margin-bottom:14px}
-.self-select-banner .self-select-inner{display:flex;align-items:center;justify-content:space-between;
-  gap:10px;background:var(--accent);color:var(--accent-text);padding:10px 16px;
-  border-radius:12px;flex-wrap:wrap;font-size:.85rem}
-.self-select-panel{margin-bottom:14px}
-.self-select-panel .self-select-inner{display:flex;align-items:center;gap:12px;
-  background:var(--card-bg);border:2px solid var(--accent);padding:12px 16px;
-  border-radius:12px;flex-wrap:wrap;animation:selfPulse .6s ease}
-.self-select-icon{font-size:1.8rem;flex-shrink:0;animation:selfBounce .8s ease infinite}
-.self-select-info{display:flex;flex-direction:column;gap:3px;font-size:.85rem;color:var(--text);flex:1;min-width:0}
-.self-select-info em{color:var(--accent);font-style:normal;font-weight:bold}
-@keyframes selfPulse{0%{box-shadow:0 0 0 0 rgba(201,165,92,.4)}70%{box-shadow:0 0 0 12px rgba(201,165,92,0)}100%{box-shadow:0 0 0 0 rgba(201,165,92,0)}}
-@keyframes selfBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
-
 /* ===== TREE STYLES ===== */
 .tree-wrap{overflow:auto;padding:30px 20px;background:var(--card-bg);
   border-radius:12px;border:1px solid var(--border);box-shadow:var(--shadow);min-height:300px}
@@ -411,12 +390,12 @@ footer{text-align:center;padding:20px;color:var(--text-light);font-size:.8rem;
   .theme-btn{font-size:.68rem;padding:3px 7px;border-radius:10px;margin-right:0}
   .admin-badge{font-size:.65rem;padding:3px 8px}
   .self-badge{font-size:.65rem;padding:3px 8px}
-  .self-select-hero .self-select-inner{flex-direction:column;text-align:center;padding:12px}
-  .self-select-hero strong{font-size:.85rem}
-  .self-select-hero .btn{width:100%}
-  .self-select-banner .self-select-inner{flex-direction:column;text-align:center;font-size:.78rem}
-  .self-select-panel .self-select-inner{flex-direction:column;text-align:center}
-  .self-select-info{font-size:.78rem}
+  
+  
+  
+  
+  
+  
   .splash-replay{font-size:.65rem;letter-spacing:0}
   .page{padding:12px}.hero-title{font-size:1.6rem}
   .form-row{grid-template-columns:1fr}
@@ -758,36 +737,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
     </div>
   </div>
   <div class="section-title">家族传承图</div>
-  <!-- Self-select feature panel -->
-  <div class="self-select-panel" id="self-select-panel" style="display:none">
-    <div class="self-select-inner">
-      <div class="self-select-icon">👆</div>
-      <div class="self-select-info">
-        <strong>选择模式已开启</strong>
-        <span>请在下方族谱树中<em>点击</em>你想设为"自己"的族人</span>
-        <span style="font-size:.72rem;color:var(--text-light)">设置后所有族人将显示与你的亲属关系称谓（覆盖上九族/下九族）</span>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="exitSelfSelectMode()" style="white-space:nowrap">取消</button>
-    </div>
-  </div>
-  <div class="self-select-banner" id="self-select-banner" style="display: none;">
-    <div class="self-select-inner">
-      <span>👤 <strong id="self-banner-name">李潘昱</strong> &nbsp;·&nbsp; 已设为自己，族人将显示亲属称谓</span>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn btn-primary btn-sm" onclick="enterSelfSelectMode()" style="white-space:nowrap">🔄 更改</button>
-        <button class="btn btn-ghost btn-sm" onclick="clearSelf()" style="white-space:nowrap">取消</button>
-      </div>
-    </div>
-  </div>
-  <div class="self-select-hero" id="self-select-hero" style="display: block;">
-    <div class="self-select-inner">
-      <div>
-        <strong>👤 亲属称谓功能</strong>
-        <span style="font-size:.8rem;color:var(--text-light)">设定一人为"自己"，所有族人自动显示与你的辈分关系</span>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="enterSelfSelectMode()" style="white-space:nowrap;flex-shrink:0">设为我自己</button>
-    </div>
-  </div>
+
   <div class="tree-toolbar">
     <span style="font-size:.8rem;color:var(--text-light)">🖱️ 滚轮缩放 · 拖拽移动 · 点击查看 &nbsp;|&nbsp; 📱 双指缩放 · 单指移动 · 单击查看</span>
     <button class="btn btn-ghost btn-sm" onclick="resetView()" style="margin-left:auto">重置视图</button>
@@ -1295,7 +1245,6 @@ async function addSplashSlide() {
   goToSplashSlide(splashSlides.length - 1);
   showToast('已添加幻灯片，请点击编辑按钮修改内容','success');
 }
-
 
 // Keyboard: space/right = next, escape = skip
 document.addEventListener('keydown', e => {
@@ -2306,17 +2255,22 @@ var selectingSelf = false;
 function enterSelfSelectMode() {
   selectingSelf = true;
   var panel = document.getElementById('self-select-panel');
-  panel.style.display = 'block';
-  panel.style.animation = 'none';
-  panel.offsetHeight;
-  panel.style.animation = 'selfPulse .6s ease';
-  document.getElementById('tree-container').style.cursor = 'crosshair';
+  if (panel) {
+    panel.style.display = 'block';
+    panel.style.animation = 'none';
+    panel.offsetHeight;
+    panel.style.animation = 'selfPulse .6s ease';
+  }
+  var tc = document.getElementById('tree-container');
+  if (tc) tc.style.cursor = 'crosshair';
   showToast('请点击族谱树中你想设为"自己"的族人','info');
 }
 function exitSelfSelectMode() {
   selectingSelf = false;
-  document.getElementById('self-select-panel').style.display = 'none';
-  document.getElementById('tree-container').style.cursor = '';
+  var panel = document.getElementById('self-select-panel');
+  if (panel) panel.style.display = 'none';
+  var tc = document.getElementById('tree-container');
+  if (tc) tc.style.cursor = '';
 }
 function handleSelfNodeClick(memberId) {
   if (!selectingSelf) return false;
@@ -3747,7 +3701,6 @@ updateHomeStats();
 renderMembers();
 refreshView();
 </script>
-
 
 <script>
 if ('serviceWorker' in navigator) {
