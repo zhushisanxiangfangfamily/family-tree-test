@@ -2836,6 +2836,7 @@ function renderFamilyView(personId) {
 	  }
 
   container.innerHTML = html;
+  container.scrollIntoView({behavior: "smooth", block: "start"});
 }
 
 function renderTree() {
