@@ -99,7 +99,7 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
 .splash-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   flex-direction:column;opacity:0;transition:opacity .6s ease;padding:40px 24px}
 .splash-slide.active{opacity:1}
-.splash-slide-bg{position:absolute;inset:0;background-size:cover;background-position:center;
+.splash-slide-bg{position:absolute;inset:0;background-size:100% auto;background-position:top center;background-repeat:no-repeat;background-color:#F5F0E8;
   z-index:0}
 .splash-slide-bg::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:1}
 .splash-slide-content{position:relative;z-index:2;text-align:center;color:#fff}
@@ -636,7 +636,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- HOME -->
-<div id="page-home" style="background-image:url('images/img_002.jpg');background-size:cover;background-position:center" style="background-image: url(&quot;images/img_003.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page active">
+<div id="page-home" style="background-image:url('images/img_002.jpg');background-size:100% auto;background-position:top center;background-repeat:no-repeat;background-color:#F5F0E8" style="background-image: url(&quot;images/img_003.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page active">
   <div class="hero has-hero-bg" style="background-image: url(&quot;images/img_004.jpg&quot;);">
     <div class="hero-title" id="hero-title">朱氏三厢房家族族谱</div>
     <div class="hero-sub" id="hero-sub">薪火相传 · 血脉相连 · 家和万事兴</div>
@@ -727,7 +727,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- TREE -->
-<div id="page-tree" style="background-image:url('images/img_009.jpg');background-size:cover;background-position:center" style="background-image: url(&quot;images/img_010.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page">
+<div id="page-tree" style="background-image:url('images/img_009.jpg');background-size:100% auto;background-position:top center;background-repeat:no-repeat;background-color:#F5F0E8" style="background-image: url(&quot;images/img_010.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page">
   <div class="admin-panel" id="tree-admin-panel">
     <div class="admin-panel-title">⚙️ 族谱树管理</div>
     <div style="font-size:.85rem;color:var(--text-light);margin-bottom:10px">
@@ -766,7 +766,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- MEMBERS -->
-<div id="page-members" style="background-image:url('images/img_069.jpg');background-size:cover;background-position:center" style="background-image: url(&quot;images/img_070.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page">
+<div id="page-members" style="background-image:url('images/img_069.jpg');background-size:100% auto;background-position:top center;background-repeat:no-repeat;background-color:#F5F0E8" style="background-image: url(&quot;images/img_070.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page">
   <div class="admin-panel" id="members-admin-panel">
     <div class="admin-panel-title">⚙️ 族人管理</div>
     <div class="admin-actions">
@@ -779,7 +779,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- STORIES -->
-<div id="page-stories" style="background-image:url('images/img_122.jpg');background-size:cover;background-position:center" style="background-image: url(&quot;images/img_123.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page">
+<div id="page-stories" style="background-image:url('images/img_122.jpg');background-size:100% auto;background-position:top center;background-repeat:no-repeat;background-color:#F5F0E8" style="background-image: url(&quot;images/img_123.jpg&quot;); background-size: cover; background-position: center center; background-attachment: scroll;" class="page">
   <div class="admin-panel" id="stories-admin-panel">
     <div class="admin-panel-title">⚙️ 故事管理</div>
     <div class="admin-actions">
@@ -1335,7 +1335,7 @@ function injectPageBgStyles(html, configObj) {
     var tagPattern = 'id="page-' + pages[i] + '"';
     var idx = html.indexOf(tagPattern);
     if (idx === -1) continue;
-    var styleStr = ' style="background-image:url(\'' + url + '\');background-size:cover;background-position:center"';
+    var styleStr = ' style="background-image:url(\'' + url + '\');background-size:100% auto;background-position:top center;background-repeat:no-repeat;background-color:#F5F0E8"';
     html = html.substring(0, idx + tagPattern.length) + styleStr + html.substring(idx + tagPattern.length);
   }
   // Hero card background
@@ -2157,14 +2157,18 @@ function applyPageBg(pageId, bgUrl, forceClear) {
   if (!el) return;
   if (bgUrl) {
     el.style.backgroundImage = 'url('+bgUrl+')';
-    el.style.backgroundSize = 'cover';
-    el.style.backgroundPosition = 'center';
+    el.style.backgroundSize = '100% auto';
+    el.style.backgroundPosition = 'top center';
+    el.style.backgroundRepeat = 'no-repeat';
     el.style.backgroundAttachment = 'scroll';
+    el.style.backgroundColor = '#F5F0E8';
   } else if (forceClear) {
     el.style.backgroundImage = '';
     el.style.backgroundSize = '';
     el.style.backgroundPosition = '';
+    el.style.backgroundRepeat = '';
     el.style.backgroundAttachment = '';
+    el.style.backgroundColor = '';
   }
 }
 function applyHeroBg(bgUrl, forceClear) {
