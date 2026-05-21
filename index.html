@@ -3780,22 +3780,28 @@ function locateMember(id) {
 function panToNode(el) {
   var wrap = document.getElementById('tree-wrap');
   var wrapRect = wrap.getBoundingClientRect();
+  var swRect = document.getElementById('tree-scale-wrap').getBoundingClientRect();
   var nodeRect = el.getBoundingClientRect();
-  var nodeCX = nodeRect.left + nodeRect.width / 2;
-  var nodeCY = nodeRect.top + nodeRect.height / 2;
-  var targetCX = wrapRect.left + wrapRect.width / 2;
-  var targetCY = wrapRect.top + wrapRect.height / 2;
 
-  // Pan to center the node
-  treeTx += (targetCX - nodeCX);
-  treeTy += (targetCY - nodeCY);
+  // Node center in screen coords
+  var nCX = nodeRect.left + nodeRect.width / 2;
+  var nCY = nodeRect.top + nodeRect.height / 2;
 
-  // If node is very small, zoom in a bit
+  // Node position in tree space (before transform)
+  var nodeTreeX = (nCX - swRect.left - treeTx) / treeScale;
+  var nodeTreeY = (nCY - swRect.top - treeTy) / treeScale;
+
+  // Pick zoom: zoom in if node is small
+  var targetScale = treeScale;
   if (nodeRect.width < 40) {
-    var s = Math.min(1.5, 120 / Math.max(nodeRect.width, 10));
-    s = Math.max(0.2, s);
-    treeScale = s;
+    targetScale = Math.min(1.5, 120 / Math.max(nodeRect.width, 10));
+    targetScale = Math.max(0.2, targetScale);
   }
+
+  // Center node in viewport at new scale
+  treeTx = wrapRect.width / 2 - nodeTreeX * targetScale;
+  treeTy = wrapRect.height / 2 - nodeTreeY * targetScale;
+  treeScale = targetScale;
 
   applyTreeTransform(true);
 }
