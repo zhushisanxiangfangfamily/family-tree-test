@@ -63,6 +63,13 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
 .header-title{font-size:1.05rem;font-weight:bold;color:var(--text);letter-spacing:2px}
 .header-actions{display:flex;align-items:center;gap:8px}
 /* Bottom tab bar */
+.music-btn{width:36px;height:36px;border-radius:50%;border:none;
+  background:rgba(255,255,255,.85);font-size:1.1rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.12);transition:all .2s;
+  -webkit-tap-highlight-color:transparent}
+.music-btn:active{transform:scale(.9)}
+.music-btn.off{opacity:.5;background:rgba(255,255,255,.6)}
 .tab-bar{position:fixed;bottom:0;left:0;right:0;height:56px;background:#fff;
   display:flex;border-top:1px solid #e8e8e8;z-index:200;
   padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -1px 3px rgba(0,0,0,.04)}
@@ -601,6 +608,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
     <button class="splash-replay visible" id="splash-replay-btn" onclick="replaySplash()" title="重温家族引导">⟳</button>
     <button class="theme-btn" id="theme-btn" onclick="toggleThemePanel()" title="切换主题">🎨</button>
     <button class="self-badge" id="self-badge" onclick="clearSelf()" title="点击取消" style="display:none"></button>
+    <button class="music-btn" id="music-btn" onclick="toggleMusic()" title="背景音乐">🎵</button>
     <button class="admin-badge" id="admin-btn" onclick="handleAdminBtn()" style="">管理员登录</button>
   </div>
 </header>
@@ -698,7 +706,14 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
     <input type="file" id="bg-file-input" accept="image/*" style="display:none" onchange="onBgFileSelected(event)">
     <div class="form-group"><label class="form-label">家族寄语（正文）</label>
       <textarea class="form-textarea" id="cfg-motto" rows="3"></textarea></div>
-    <button class="btn btn-primary" onclick="saveConfig()">保存设置</button>
+    <div class="admin-panel-title" style="margin-top:8px">🎵 背景音乐</div>
+    <div class="form-row" style="align-items:center">
+      <div class="form-group" style="flex:1"><label class="form-label">音乐文件URL（留空使用默认音乐）</label>
+        <input class="form-input" id="cfg-music-url" placeholder="https://example.com/music.mp3"></div>
+      <div class="form-group" style="flex:0 0 auto;min-width:80px"><label class="form-label">开关</label>
+        <select class="form-select" id="cfg-music-enabled"><option value="1">开启</option><option value="0">关闭</option></select></div>
+    </div>
+        <button class="btn btn-primary" onclick="saveConfig()">保存设置</button>
     <button class="btn btn-primary btn-sm" onclick="exportFullHTML()" style="background:#e67e22;margin-top:8px;width:100%">📥 导出完整族谱</button>
   </div>
   <div class="section-title">家族寄语</div>
@@ -2086,6 +2101,39 @@ function logout() {
   refreshView();
 }
 
+// ===== MUSIC =====
+var htmlAudio = null;
+function ensureHtmlAudio() {
+  if (!htmlAudio) { htmlAudio = new Audio(); htmlAudio.loop = true; }
+  return htmlAudio;
+}
+function syncMusicState() {
+  var cfg = JSON.parse(localStorage.getItem('ft_config')||'{}');
+  var btn = document.getElementById('music-btn');
+  if (cfg.musicEnabled !== false) {
+    if (btn) { btn.classList.remove('off'); btn.textContent = '🎵'; }
+    if (window.Android) {
+      Android.playMusic(cfg.musicUrl||'');
+    } else {
+      var a = ensureHtmlAudio();
+      a.src = cfg.musicUrl||'';
+      a.play().catch(function(){});
+    }
+  } else {
+    if (btn) { btn.classList.add('off'); btn.textContent = '🔇'; }
+    if (window.Android) {
+      Android.pauseMusic();
+    } else {
+      var a = ensureHtmlAudio(); a.pause();
+    }
+  }
+}
+function toggleMusic() {
+  var cfg = JSON.parse(localStorage.getItem('ft_config')||'{}');
+  cfg.musicEnabled = cfg.musicEnabled === false ? true : false;
+  localStorage.setItem('ft_config', JSON.stringify(cfg));
+  syncMusicState();
+}
 // ===== CONFIG =====
 function loadConfigForm() {
   document.getElementById('cfg-title').value = config.title||'陈氏家族';
@@ -2096,6 +2144,8 @@ function loadConfigForm() {
   updateBgThumb('home'); updateBgThumb('tree');
   updateBgThumb('members'); updateBgThumb('stories');
   updateBgThumb('hero');
+  document.getElementById('cfg-music-url').value = config.musicUrl||'';
+  document.getElementById('cfg-music-enabled').value = config.musicEnabled===false?'0':'1';
   document.getElementById('cfg-motto').value = config.motto||'家族是我们共同的根，无论走到哪里，血脉相连，情义永存。愿子孙后代铭记先祖恩德，传承家风，光耀门楣。';
 }
 function saveConfig() {
@@ -2105,6 +2155,8 @@ function saveConfig() {
     year: document.getElementById('cfg-year').value||'1920',
     gen: document.getElementById('cfg-gen').value||'5',
     genBase: parseInt(document.getElementById('cfg-gen-base').value)||1,
+    musicUrl: document.getElementById('cfg-music-url').value||'',
+    musicEnabled: document.getElementById('cfg-music-enabled').value==='1',
     bgHome: config.bgHome||'',
     bgTree: config.bgTree||'',
     bgMembers: config.bgMembers||'',
@@ -2118,6 +2170,7 @@ function saveConfig() {
   updateSelfDisplay();
   refreshView();
   renderMembers();
+  syncMusicState();
   showToast('设置已保存','success');
 }
 function setSelf(id) {
