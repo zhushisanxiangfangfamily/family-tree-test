@@ -2352,6 +2352,14 @@ function applyTreeTransform(animate) {
   wrap.style.transform = `translate(${treeTx}px,${treeTy}px) scale(${treeScale})`;
 }
 
+function isInSearchArea(el) {
+  while (el) {
+    if (el.classList && el.classList.contains('tree-search-wrap')) return true;
+    el = el.parentElement;
+  }
+  return false;
+}
+
 function resetView() {
   autoFitTree();
 }
@@ -2422,6 +2430,7 @@ function initTreeInteraction() {
   let panMoved = false;
   wrap.addEventListener('mousedown', e => {
     if(e.button !== 0) return;
+    if(isInSearchArea(e.target)) return;
     isPanning = true;
     panMoved = false;
     panStartX = e.clientX - treeTx;
@@ -2449,6 +2458,7 @@ function initTreeInteraction() {
   });
   // Intercept clicks that follow a drag
   wrap.addEventListener('click', e => {
+    if(isInSearchArea(e.target)) return;
     if(wrap._blockNextClick) { e.stopPropagation(); e.preventDefault(); }
   }, true);
 
@@ -2462,6 +2472,7 @@ function initTreeInteraction() {
   let touchStartX = 0, touchStartY = 0;
 
   wrap.addEventListener('touchstart', e => {
+    if(isInSearchArea(e.target)) return;
     e.preventDefault();
     window._isTouchDevice = true;
     document.body.classList.add('touch-device'); // enables always-on admin btns
