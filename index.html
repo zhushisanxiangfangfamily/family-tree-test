@@ -3951,9 +3951,10 @@ function checkBirthdays() {
     });
 
     if (birthdays.length > 0) {
-      // Show first birthday
+      // Queue all birthdays, show one by one
+      _bdayQueue = birthdays.slice();
       setTimeout(function() {
-        showBirthdayPopup(birthdays[0]);
+        showNextBirthday();
       }, 500);
     }
 
@@ -3962,11 +3963,26 @@ function checkBirthdays() {
   } catch(e) {}
 }
 
-function showBirthdayPopup(person) {
+var _bdayQueue = [];
+
+function showNextBirthday() {
+  if (_bdayQueue.length === 0) return;
+  var person = _bdayQueue.shift();
+  showBirthdayPopup(person, _bdayQueue.length);
+}
+
+function showBirthdayPopup(person, remaining) {
   _bdayCurrentPerson = person;
   var today = new Date();
   var bd = parseBirthDate(person.birth);
   var age = bd.year ? (today.getFullYear() - parseInt(bd.year)) : '?';
+
+  var titleEl = document.querySelector('.bday-title');
+  if (remaining > 0) {
+    titleEl.innerHTML = '&#127881; 生日快乐！（还有' + remaining + '人）';
+  } else {
+    titleEl.innerHTML = '&#127881; 生日快乐！';
+  }
 
   document.getElementById('bday-name').textContent = person.name;
   document.getElementById('bday-age').innerHTML = age + '<span> 岁</span>';
@@ -3977,6 +3993,10 @@ function showBirthdayPopup(person) {
 function closeBirthdayPopup() {
   document.getElementById('bday-overlay').style.display = 'none';
   _bdayCurrentPerson = null;
+  // Show next birthday in queue
+  if (_bdayQueue.length > 0) {
+    setTimeout(function() { showNextBirthday(); }, 300);
+  }
 }
 
 function sendBirthdayLetter() {
