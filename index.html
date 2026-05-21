@@ -2755,23 +2755,6 @@ function renderFamilyView(personId) {
     }
   }
 
-  // Self card
-  var selfRelLabel = '';
-  if (selfId && selfId === person.id) selfRelLabel = '<span class="family-card-relation">⭐ 我</span>';
-  var selfBtnHtml = '';
-  if (selfId && selfId === person.id) {
-    selfBtnHtml = '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();clearSelf()" style="font-size:.7rem;padding:3px 10px;color:#c0392b">取消自己</button>';
-  } else {
-    selfBtnHtml = '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();setSelf(' + person.id + ')" style="font-size:.7rem;padding:3px 10px">👤 设为我自己</button>';
-  }
-  html += '<div class="family-section-title">👤 本人</div>';
-  html += '<div class="family-card self" onclick="openMemberDetail(' + person.id + ')">' +
-    '<div class="family-card-av">' + (person.photo ? '<img loading="lazy" decoding="async" loading="lazy" decoding="async" loading="lazy" decoding="async" loading="lazy" decoding="async" loading="lazy" decoding="async" src="' + person.photo + '" alt="' + person.name + '">' : person.name[0]) + '</div>' +
-    '<div class="family-card-info"><div class="family-card-name">' + person.name + ' ' + selfRelLabel + '</div>' +
-    '<div class="family-card-detail">' + formatGen(person.gen) + ' · ' + person.gender + '</div></div>' +
-    selfBtnHtml +
-    '</div>';
-
   // Siblings section — other children of father
   var siblings = [];
   var fatherId = person.parentId;
@@ -2794,6 +2777,23 @@ function renderFamilyView(personId) {
     });
     html += '</div>';
   }
+
+  // Self card
+  var selfRelLabel = '';
+  if (selfId && selfId === person.id) selfRelLabel = '<span class="family-card-relation">⭐ 我</span>';
+  var selfBtnHtml = '';
+  if (selfId && selfId === person.id) {
+    selfBtnHtml = '<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();clearSelf()" style="font-size:.7rem;padding:3px 10px;color:#c0392b">取消自己</button>';
+  } else {
+    selfBtnHtml = '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();setSelf(' + person.id + ')" style="font-size:.7rem;padding:3px 10px">👤 设为我自己</button>';
+  }
+  html += '<div class="family-section-title">👤 本人</div>';
+  html += '<div class="family-card self" onclick="openMemberDetail(' + person.id + ')">' +
+    '<div class="family-card-av">' + (person.photo ? '<img loading="lazy" decoding="async" loading="lazy" decoding="async" loading="lazy" decoding="async" loading="lazy" decoding="async" loading="lazy" decoding="async" src="' + person.photo + '" alt="' + person.name + '">' : person.name[0]) + '</div>' +
+    '<div class="family-card-info"><div class="family-card-name">' + person.name + ' ' + selfRelLabel + '</div>' +
+    '<div class="family-card-detail">' + formatGen(person.gen) + ' · ' + person.gender + '</div></div>' +
+    selfBtnHtml +
+    '</div>';
 
 	  // Spouse section — use getMyAllSpouses to handle both directions
 	  var allSpouses = getMyAllSpouses(person.id);
