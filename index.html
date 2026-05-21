@@ -2079,6 +2079,7 @@ let nextStoryId = stories.reduce((a,b)=>Math.max(a,b.id),0)+1;
 // ===== NAV =====
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  if (id === 'home') { setTimeout(function() { checkBirthdays(); }, 300); }
   document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   var tab = document.querySelector('.tab-item[data-page="'+id+'"]');
@@ -3925,34 +3926,40 @@ updateHomeStats();
 renderMembers();
 refreshView();
 checkBirthdays();
+// Double-check after DOM fully settled
+setTimeout(function() { checkBirthdays(); }, 1500);
 
 // ===== BIRTHDAY SYSTEM =====
 var _bdayCurrentPerson = null;
 
 function checkBirthdays() {
-  // Clean old letters (>3 days)
-  cleanOldLetters();
+  try {
+    // Clean old letters (>3 days)
+    cleanOldLetters();
 
-  var today = new Date();
-  var todayM = today.getMonth() + 1;
-  var todayD = today.getDate();
+    var today = new Date();
+    var todayM = today.getMonth() + 1;
+    var todayD = today.getDate();
 
-  // Find living members whose birthday is today
-  var birthdays = members.filter(function(m) {
-    if (!m.birth) return false;
-    if (m.death && m.death.trim()) return false; // deceased
-    var bd = parseBirthDate(m.birth);
-    if (!bd.month || !bd.day) return false;
-    return parseInt(bd.month) === todayM && parseInt(bd.day) === todayD;
-  });
+    // Find living members whose birthday is today
+    var birthdays = members.filter(function(m) {
+      if (!m.birth) return false;
+      if (m.death && m.death.trim()) return false; // deceased
+      var bd = parseBirthDate(m.birth);
+      if (!bd.month || !bd.day) return false;
+      return parseInt(bd.month) === todayM && parseInt(bd.day) === todayD;
+    });
 
-  if (birthdays.length > 0) {
-    // Show first birthday
-    showBirthdayPopup(birthdays[0]);
-  }
+    if (birthdays.length > 0) {
+      // Show first birthday
+      setTimeout(function() {
+        showBirthdayPopup(birthdays[0]);
+      }, 500);
+    }
 
-  // Update mail badge
-  updateMailBadge();
+    // Update mail badge
+    updateMailBadge();
+  } catch(e) {}
 }
 
 function showBirthdayPopup(person) {
