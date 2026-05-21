@@ -193,9 +193,26 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
   padding:8px 10px;text-align:center;width:96px;cursor:pointer;transition:all .2s;
   box-shadow:var(--shadow);flex-shrink:0;position:relative}
 .t-node:hover{border-color:var(--primary-light);transform:translateY(-2px);box-shadow:0 6px 18px rgba(139,69,19,.18)}
-.t-node.gen-1{border-color:var(--primary);background:var(--hero-gradient)}
-.t-node.gen-2{border-color:var(--primary-light)}
-.t-node.gen-3{border-color:#A0522D}
+.t-node.gen-1{border-color:var(--primary);background:var(--hero-gradient);width:96px;padding:8px 10px}
+.t-node.gen-1 .t-av{width:48px;height:48px;font-size:1.1rem}
+.t-node.gen-1 .t-name{font-size:.7rem}
+.t-node.gen-1 .t-role{font-size:.6rem}
+.t-node.gen-2{border-color:var(--primary-light);width:68px;padding:6px 7px}
+.t-node.gen-2 .t-av{width:32px;height:32px;font-size:.85rem}
+.t-node.gen-2 .t-name{font-size:.6rem}
+.t-node.gen-2 .t-role{font-size:.5rem}
+.t-node.gen-3{border-color:#A0522D;width:52px;padding:5px 5px}
+.t-node.gen-3 .t-av{width:24px;height:24px;font-size:.7rem}
+.t-node.gen-3 .t-name{font-size:.52rem}
+.t-node.gen-3 .t-role{font-size:.45rem}
+.t-node.gen-4{width:42px;padding:4px 4px}
+.t-node.gen-4 .t-av{width:20px;height:20px;font-size:.62rem}
+.t-node.gen-4 .t-name{font-size:.45rem}
+.t-node.gen-4 .t-role{font-size:.4rem}
+.t-node.gen-5{width:36px;padding:3px 3px}
+.t-node.gen-5 .t-av{width:18px;height:18px;font-size:.55rem}
+.t-node.gen-5 .t-name{font-size:.4rem}
+.t-node.gen-5 .t-role{font-size:.38rem}
 .t-node.spouse{border-style:dashed;border-color:var(--accent);background:#FFFBF0}
 .t-node.add-btn{border-style:dashed;border-color:var(--border);background:transparent;
   color:var(--text-light);font-size:1.4rem;display:none;width:36px;height:36px;
@@ -2351,7 +2368,48 @@ function applyTreeTransform(animate) {
 }
 
 function resetView() {
-  treeScale = 1; treeTx = 40; treeTy = 40;
+  autoFitTree();
+}
+
+function autoFitTree() {
+  var wrap = document.getElementById('tree-wrap');
+  var scaleWrap = document.getElementById('tree-scale-wrap');
+  var container = document.getElementById('tree-container');
+  if (!wrap || !scaleWrap || !container) return;
+  if (!container.children.length) return;
+
+  // Temporarily reset transform to measure natural layout
+  var prevTrans = scaleWrap.style.transform;
+  var prevTransn = scaleWrap.style.transition;
+  scaleWrap.style.transition = 'none';
+  scaleWrap.style.transform = '';
+
+  var wrapW = wrap.clientWidth;
+  var wrapH = wrap.clientHeight;
+  var contRect = container.getBoundingClientRect();
+  var swRect = scaleWrap.getBoundingClientRect();
+  var contW = contRect.width;
+  var contH = contRect.height;
+  var contLeft = contRect.left - swRect.left;
+  var contTop = contRect.top - swRect.top;
+
+  // Restore
+  scaleWrap.style.transition = prevTransn;
+  scaleWrap.style.transform = prevTrans;
+
+  if (contW < 10 || contH < 10) return;
+
+  var pad = 40;
+  var availW = wrapW - pad * 2;
+  var availH = wrapH - pad * 2;
+  var fitScale = Math.min(availW / contW, availH / contH, 1.5);
+  fitScale = Math.max(0.15, fitScale);
+
+  var scaledW = contW * fitScale;
+  var scaledH = contH * fitScale;
+  treeTx = (wrapW - scaledW) / 2 - contLeft * fitScale;
+  treeTy = (wrapH - scaledH) / 2 - contTop * fitScale;
+  treeScale = fitScale;
   applyTreeTransform(true);
 }
 
@@ -2914,6 +2972,12 @@ function renderTree() {
     initTreeInteraction();
     window._treeInteractionInited = true;
   }
+  // Auto-fit after layout
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      autoFitTree();
+    });
+  });
 }
 
 // ===== MEMBERS =====
@@ -3729,15 +3793,30 @@ function locateMember(id) {
 }
 
 function panToNode(el) {
-  const wrap = document.getElementById('tree-wrap');
-  const wrapRect = wrap.getBoundingClientRect();
-  const nodeRect = el.getBoundingClientRect();
-  const nodeCX = nodeRect.left + nodeRect.width/2;
-  const nodeCY = nodeRect.top + nodeRect.height/2;
-  const targetCX = wrapRect.left + wrapRect.width/2;
-  const targetCY = wrapRect.top + wrapRect.height/2;
-  treeTx += (targetCX - nodeCX);
-  treeTy += (targetCY - nodeCY);
+  var wrap = document.getElementById('tree-wrap');
+  var wrapW = wrap.clientWidth;
+  var wrapH = wrap.clientHeight;
+  var sw = document.getElementById('tree-scale-wrap');
+  var swRect = sw.getBoundingClientRect();
+  var nRect = el.getBoundingClientRect();
+
+  // Node center and size in screen coords
+  var nCX = nRect.left + nRect.width / 2;
+  var nCY = nRect.top + nRect.height / 2;
+  var nW = nRect.width;
+
+  // Target zoom: make node area ~200px wide on screen, capped
+  var targetScale = Math.min(1.5, 200 / Math.max(nW, 20));
+  targetScale = Math.max(0.3, targetScale);
+
+  // Node position in current tree space (unscaled coords)
+  var nodeTreeX = (nCX - swRect.left - treeTx) / treeScale;
+  var nodeTreeY = (nCY - swRect.top - treeTy) / treeScale;
+
+  // New translation centers the node
+  treeTx = wrapW / 2 - nodeTreeX * targetScale;
+  treeTy = wrapH / 2 - nodeTreeY * targetScale;
+  treeScale = targetScale;
   applyTreeTransform(true);
 }
 
