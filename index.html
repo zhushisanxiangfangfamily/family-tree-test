@@ -2104,7 +2104,7 @@ function logout() {
 // ===== MUSIC =====
 var htmlAudio = null;
 function ensureHtmlAudio() {
-  if (!htmlAudio) { htmlAudio = new Audio(); htmlAudio.loop = true; }
+  if (!htmlAudio) { htmlAudio = new Audio(); htmlAudio.loop = true; htmlAudio.preload = 'auto'; }
   return htmlAudio;
 }
 function syncMusicState() {
@@ -2116,8 +2116,11 @@ function syncMusicState() {
       Android.playMusic(cfg.musicUrl||'');
     } else {
       var a = ensureHtmlAudio();
-      a.src = cfg.musicUrl||'';
-      a.play().catch(function(){});
+      var targetUrl = cfg.musicUrl||'';
+      if (a.src !== targetUrl && !a.src.endsWith(targetUrl)) {
+        a.src = targetUrl;
+      }
+      if (a.paused) { a.play().catch(function(){}); }
     }
   } else {
     if (btn) { btn.classList.add('off'); btn.textContent = '🔇'; }
