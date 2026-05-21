@@ -424,6 +424,7 @@ footer{text-align:center;padding:20px;color:var(--text-light);font-size:.8rem;
 	.family-card.parent-card{border-left:3px solid var(--primary-light)}
 	.family-card.child-card{}
 .family-card.sibling-card{border-left:3px solid #e8c56d}
+	.family-card.inlaw-card{border-left:3px solid #7ec8a0}
 	.family-card-av{width:48px;height:48px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;font-weight:bold;overflow:hidden;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%)}
 	.family-card-av img{width:100%;height:100%;object-fit:cover;display:block}
 	.family-card-info{flex:1;min-width:0}
@@ -2727,6 +2728,31 @@ function renderFamilyView(personId) {
       '<div class="family-card-info"><div class="family-card-name">' + m.name + ' ' + mRel + '</div>' +
       '<div class="family-card-detail">' + formatGen(m.gen) + ' · ' + m.gender + '</div></div>' +
       '<span class="family-card-arrow">›</span></div>';
+  }
+
+  // In-law parents: when viewing a spouse without own parents, show partner's parents
+  if (!parents.father && !parents.mother && person.spouseOfId) {
+    var inlawParents = getParents(person.spouseOfId);
+    var inlawLabel = person.gender === '女' ? '👆 公婆' : '👆 岳父母';
+    if (inlawParents.father || inlawParents.mother) {
+      html += '<div class="family-section-title">' + inlawLabel + '</div>';
+    }
+    if (inlawParents.father) {
+      var ilf = inlawParents.father;
+      html += '<div class="family-card parent-card inlaw-card" onclick="renderFamilyView(' + ilf.id + ')">' +
+        '<div class="family-card-av">' + (ilf.photo ? '<img loading="lazy" decoding="async" src="' + ilf.photo + '" alt="' + ilf.name + '">' : ilf.name[0]) + '</div>' +
+        '<div class="family-card-info"><div class="family-card-name">' + ilf.name + '</div>' +
+        '<div class="family-card-detail">' + formatGen(ilf.gen) + ' · ' + ilf.gender + '</div></div>' +
+        '<span class="family-card-arrow">›</span></div>';
+    }
+    if (inlawParents.mother) {
+      var ilm = inlawParents.mother;
+      html += '<div class="family-card parent-card inlaw-card" onclick="renderFamilyView(' + ilm.id + ')">' +
+        '<div class="family-card-av">' + (ilm.photo ? '<img loading="lazy" decoding="async" src="' + ilm.photo + '" alt="' + ilm.name + '">' : ilm.name[0]) + '</div>' +
+        '<div class="family-card-info"><div class="family-card-name">' + ilm.name + '</div>' +
+        '<div class="family-card-detail">' + formatGen(ilm.gen) + ' · ' + ilm.gender + '</div></div>' +
+        '<span class="family-card-arrow">›</span></div>';
+    }
   }
 
   // Self card
