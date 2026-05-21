@@ -55,7 +55,7 @@ body:not([data-theme]){
   --accent-text:#3E1F0D;--nav-gradient:linear-gradient(135deg,#8B1A1A 0%,#5C0E0E 100%);
   --hero-gradient:linear-gradient(180deg,#FFF8E7 0%,#F5E6C8 100%);
 }
-body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;background:#F5F5F5;color:var(--text);min-height:100vh;transition:background .3s,color .3s;padding-bottom:68px}
+body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;background:transparent;color:var(--text);min-height:100vh;transition:background .3s,color .3s;padding-bottom:68px}
 /* Top header bar */
 .top-header{position:sticky;top:0;z-index:100;background:#fff;padding:10px 16px;
   display:flex;align-items:center;justify-content:space-between;height:48px;
@@ -362,7 +362,7 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
 .confirm-msg{font-size:.87rem;color:var(--text-light);margin-bottom:18px;line-height:1.6}
 .confirm-actions{display:flex;gap:9px;justify-content:flex-end}
 footer{text-align:center;padding:20px;color:var(--text-light);font-size:.8rem;
-  border-top:1px solid var(--border);margin-top:36px;letter-spacing:2px;background:transparent;margin-bottom:68px}
+  border-top:none;margin-top:36px;letter-spacing:2px;background:transparent;margin-bottom:68px;opacity:0.5}
 /* ── 树搜索 ── */
 	.tree-search-wrap{position:relative;margin-bottom:14px}
 	.tree-search-input{width:100%;padding:10px 40px 10px 14px;border:1px solid var(--border);border-radius:10px;font-size:.85rem;background:var(--card-bg);color:var(--text);font-family:inherit;outline:none;transition:border-color .2s}
