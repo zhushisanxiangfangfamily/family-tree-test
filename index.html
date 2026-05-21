@@ -3748,7 +3748,7 @@ function handleTreeSearch(query) {
   }
   clearBtn.classList.add('visible');
   _searchIdx = 0;
-  const matches = members.filter(m => !m.spouseOfId && m.name.toLowerCase().includes(q));
+  const matches = members.filter(m => m.name.toLowerCase().includes(q));
   if(matches.length === 0) {
     resultsEl.innerHTML='<div class="tree-search-empty">未找到匹配的族人</div>';
     resultsEl.classList.add('open'); return;
