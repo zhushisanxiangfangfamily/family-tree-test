@@ -3779,26 +3779,33 @@ function locateMember(id) {
 
 function panToNode(el) {
   var wrap = document.getElementById('tree-wrap');
-  var wrapRect = wrap.getBoundingClientRect();
-  var swRect = document.getElementById('tree-scale-wrap').getBoundingClientRect();
-  var nodeRect = el.getBoundingClientRect();
+  var scaleWrap = document.getElementById('tree-scale-wrap');
+  var wrapW = wrap.clientWidth;
+  var wrapH = wrap.clientHeight;
 
-  // Node center on screen
-  var nCX = nodeRect.left + nodeRect.width / 2;
-  var nCY = nodeRect.top + nodeRect.height / 2;
+  // Save and reset transform to measure natural layout
+  var prevTrans = scaleWrap.style.transition;
+  scaleWrap.style.transition = 'none';
+  scaleWrap.style.transform = '';
 
-  // Back-calculate node position in tree space
-  var nodeTX = (nCX - swRect.left - treeTx) / treeScale;
-  var nodeTY = (nCY - swRect.top - treeTy) / treeScale;
+  // Measure node in natural (unscaled) layout
+  var nRect = el.getBoundingClientRect();
+  var swRect = scaleWrap.getBoundingClientRect();
+  var nCX = nRect.left + nRect.width / 2 - swRect.left;
+  var nCY = nRect.top + nRect.height / 2 - swRect.top;
+  var nW = nRect.width;
 
-  // Zoom in so node is clearly visible (~150px on screen), don't go below current
-  var targetScale = Math.max(treeScale, Math.min(1.5, 150 / Math.max(nodeRect.width, 1)));
+  // Pick zoom: make node ~150px on screen, capped
+  var targetScale = Math.min(1.5, 150 / Math.max(nW, 1));
+  targetScale = Math.max(0.15, targetScale);
 
-  // Center node at new scale
-  treeTx = (wrapRect.width - 2) / 2 - nodeTX * targetScale;
-  treeTy = (wrapRect.height - 2) / 2 - nodeTY * targetScale;
+  // Translation to center node at target scale
+  treeTx = wrapW / 2 - nCX * targetScale;
+  treeTy = wrapH / 2 - nCY * targetScale;
   treeScale = targetScale;
 
+  // Restore transition and apply
+  scaleWrap.style.transition = prevTrans;
   applyTreeTransform(true);
 }
 
