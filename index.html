@@ -480,6 +480,43 @@ footer{display:none}
 .lock-error{font-size:13px;color:#c0392b;margin-top:8px;display:none}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
 .hidden-input{position:absolute;opacity:0;width:100%;height:56px;left:0;top:0;font-size:32px;letter-spacing:40px;text-indent:12px}
+
+.bday-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center}
+.bday-card{background:#fff;border-radius:16px;padding:28px 24px;max-width:380px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative;animation:bdayPop .4s ease}
+@keyframes bdayPop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+.bday-icon{font-size:56px;margin-bottom:4px}
+.bday-title{font-size:1.3rem;font-weight:bold;color:#c0392b;margin-bottom:2px}
+.bday-name{font-size:1.1rem;color:#4a3000;margin-bottom:4px}
+.bday-age{font-size:2.5rem;font-weight:bold;color:var(--primary);margin-bottom:14px}
+.bday-age span{font-size:1rem;color:var(--text-light);font-weight:normal}
+.bday-msg{width:100%;height:80px;border:1px solid var(--border);border-radius:10px;padding:10px;font-size:.85rem;font-family:inherit;resize:none;margin-bottom:12px;box-sizing:border-box;outline:none}
+.bday-msg:focus{border-color:var(--accent)}
+.bday-actions{display:flex;gap:10px;justify-content:center}
+.bday-actions button{padding:8px 24px;border-radius:20px;border:none;font-size:.9rem;cursor:pointer;font-family:inherit;transition:all .2s}
+.bday-send{background:var(--accent);color:#5D2E0C;font-weight:bold}
+.bday-send:hover{opacity:.9}
+.bday-close{background:#eee;color:#666}
+.bday-close:hover{background:#ddd}
+.mail-btn{width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.85);font-size:1.2rem;cursor:pointer;position:relative;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.mail-btn:active{transform:scale(.9)}
+.mail-badge{position:absolute;top:-4px;right:-4px;background:#c0392b;color:#fff;font-size:.6rem;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 5px}
+.mail-panel-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:9998;display:none}
+.mail-panel{position:fixed;top:0;right:0;width:360px;max-width:90vw;height:100%;background:#fff;z-index:9999;box-shadow:-4px 0 24px rgba(0,0,0,.15);transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
+.mail-panel.open{transform:translateX(0)}
+.mail-panel-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.mail-panel-title{font-size:1rem;font-weight:bold;color:var(--text)}
+.mail-panel-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light);padding:4px 8px}
+.mail-list{flex:1;overflow-y:auto;padding:14px}
+.mail-empty{text-align:center;color:var(--text-light);padding:40px 20px;font-size:.9rem}
+.mail-item{background:#FFFBF0;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;position:relative}
+.mail-item-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.mail-item-info{flex:1}
+.mail-item-subject{font-size:.85rem;font-weight:bold;color:var(--primary);margin-bottom:2px}
+.mail-item-meta{font-size:.7rem;color:var(--text-light)}
+.mail-item-msg{font-size:.85rem;color:var(--text);line-height:1.5;white-space:pre-wrap}
+.mail-item-del{position:absolute;top:8px;right:8px;background:none;border:none;color:#c0392b;cursor:pointer;font-size:.75rem;opacity:.5}
+.mail-item-del:hover{opacity:1}
+
 </style>
 </head>
 <body data-theme="imperial" class="">
@@ -611,6 +648,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
     <button class="theme-btn" id="theme-btn" onclick="toggleThemePanel()" title="切换主题">🎨</button>
     <button class="self-badge" id="self-badge" onclick="clearSelf()" title="点击取消" style="display:none"></button>
     <button class="music-btn" id="music-btn" onclick="toggleMusic()" title="背景音乐">🎵</button>
+    <button class="mail-btn" id="mail-btn" onclick="toggleMailPanel()" title="生日信箱">📬<span class="mail-badge" id="mail-badge">0</span></button>
     <button class="admin-badge" id="admin-btn" onclick="handleAdminBtn()" style="">管理员登录</button>
   </div>
 </header>
@@ -3886,6 +3924,162 @@ updateSelfDisplay();
 updateHomeStats();
 renderMembers();
 refreshView();
+checkBirthdays();
+
+// ===== BIRTHDAY SYSTEM =====
+var _bdayCurrentPerson = null;
+
+function checkBirthdays() {
+  // Clean old letters (>3 days)
+  cleanOldLetters();
+
+  var today = new Date();
+  var todayM = today.getMonth() + 1;
+  var todayD = today.getDate();
+
+  // Find living members whose birthday is today
+  var birthdays = members.filter(function(m) {
+    if (!m.birth) return false;
+    if (m.death && m.death.trim()) return false; // deceased
+    var bd = parseBirthDate(m.birth);
+    if (!bd.month || !bd.day) return false;
+    return parseInt(bd.month) === todayM && parseInt(bd.day) === todayD;
+  });
+
+  if (birthdays.length > 0) {
+    // Show first birthday
+    showBirthdayPopup(birthdays[0]);
+  }
+
+  // Update mail badge
+  updateMailBadge();
+}
+
+function showBirthdayPopup(person) {
+  _bdayCurrentPerson = person;
+  var today = new Date();
+  var bd = parseBirthDate(person.birth);
+  var age = bd.year ? (today.getFullYear() - parseInt(bd.year)) : '?';
+
+  document.getElementById('bday-name').textContent = person.name;
+  document.getElementById('bday-age').innerHTML = age + '<span> 岁</span>';
+  document.getElementById('bday-msg').value = '';
+  document.getElementById('bday-overlay').style.display = 'flex';
+}
+
+function closeBirthdayPopup() {
+  document.getElementById('bday-overlay').style.display = 'none';
+  _bdayCurrentPerson = null;
+}
+
+function sendBirthdayLetter() {
+  if (!_bdayCurrentPerson) return;
+  var msg = document.getElementById('bday-msg').value.trim();
+  if (!msg) { closeBirthdayPopup(); return; }
+
+  var bd = parseBirthDate(_bdayCurrentPerson.birth);
+  var age = bd.year ? (new Date().getFullYear() - parseInt(bd.year)) : '?';
+
+  var letters = getLetters();
+  letters.push({
+    id: Date.now(),
+    memberId: _bdayCurrentPerson.id,
+    memberName: _bdayCurrentPerson.name,
+    age: age,
+    message: msg,
+    created: Date.now()
+  });
+  saveLetters(letters);
+
+  closeBirthdayPopup();
+  updateMailBadge();
+}
+
+function getLetters() {
+  try {
+    return JSON.parse(localStorage.getItem('ft_birthday_letters') || '[]');
+  } catch(e) { return []; }
+}
+
+function saveLetters(letters) {
+  try {
+    localStorage.setItem('ft_birthday_letters', JSON.stringify(letters));
+  } catch(e) {}
+}
+
+function cleanOldLetters() {
+  var letters = getLetters();
+  var cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000; // 3 days
+  var filtered = letters.filter(function(l) { return l.created > cutoff; });
+  if (filtered.length !== letters.length) saveLetters(filtered);
+}
+
+function updateMailBadge() {
+  var letters = getLetters();
+  var badge = document.getElementById('mail-badge');
+  if (!badge) return;
+  var count = letters.length;
+  badge.textContent = count > 99 ? '99+' : count;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+}
+
+function toggleMailPanel() {
+  var panel = document.getElementById('mail-panel');
+  var overlay = document.getElementById('mail-panel-overlay');
+  if (panel.classList.contains('open')) {
+    closeMailPanel();
+  } else {
+    renderMailList();
+    panel.classList.add('open');
+    overlay.style.display = 'block';
+  }
+}
+
+function closeMailPanel() {
+  document.getElementById('mail-panel').classList.remove('open');
+  document.getElementById('mail-panel-overlay').style.display = 'none';
+}
+
+function renderMailList() {
+  var list = document.getElementById('mail-list');
+  var letters = getLetters();
+
+  if (letters.length === 0) {
+    list.innerHTML = '<div class="mail-empty">📭 暂无生日信件<br><span style="font-size:.75rem;color:var(--text-light)">信件保存3天后自动清除</span></div>';
+    return;
+  }
+
+  // Sort newest first
+  letters.sort(function(a, b) { return b.created - a.created; });
+
+  list.innerHTML = letters.map(function(l) {
+    var d = new Date(l.created);
+    var dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return '<div class="mail-item">' +
+      '<button class="mail-item-del" onclick="deleteLetter(' + l.id + ')" title="删除">✕</button>' +
+      '<div class="mail-item-top">' +
+        '<div class="mail-item-info">' +
+          '<div class="mail-item-subject">🎂 祝 ' + l.memberName + ' ' + l.age + '岁生日快乐</div>' +
+          '<div class="mail-item-meta">' + dateStr + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mail-item-msg">' + escHtml(l.message) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function deleteLetter(id) {
+  var letters = getLetters().filter(function(l) { return l.id !== id; });
+  saveLetters(letters);
+  renderMailList();
+  updateMailBadge();
+  if (letters.length === 0) closeMailPanel();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 </script>
 
 <script>
@@ -3893,4 +4087,27 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
 }
 </script>
+
+<div class="bday-overlay" id="bday-overlay" style="display:none">
+  <div class="bday-card">
+    <div class="bday-icon">🎂</div>
+    <div class="bday-title">🎉 生日快乐！</div>
+    <div class="bday-name" id="bday-name"></div>
+    <div class="bday-age" id="bday-age"></div>
+    <textarea class="bday-msg" id="bday-msg" placeholder="写下你的生日祝福...💌"></textarea>
+    <div class="bday-actions">
+      <button class="bday-close" onclick="closeBirthdayPopup()">关闭</button>
+      <button class="bday-send" onclick="sendBirthdayLetter()">📨 发送祝福</button>
+    </div>
+  </div>
+</div>
+<div class="mail-panel-overlay" id="mail-panel-overlay" onclick="closeMailPanel()"></div>
+<div class="mail-panel" id="mail-panel">
+  <div class="mail-panel-header">
+    <span class="mail-panel-title">📬 生日信箱</span>
+    <button class="mail-panel-close" onclick="closeMailPanel()">✕</button>
+  </div>
+  <div class="mail-list" id="mail-list"></div>
+</div>
+
 </body></html>
