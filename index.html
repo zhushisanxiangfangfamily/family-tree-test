@@ -423,6 +423,7 @@ footer{text-align:center;padding:20px;color:var(--text-light);font-size:.8rem;
 	.family-card.spouse{border-left:3px solid var(--accent)}
 	.family-card.parent-card{border-left:3px solid var(--primary-light)}
 	.family-card.child-card{}
+.family-card.sibling-card{border-left:3px solid #e8c56d}
 	.family-card-av{width:48px;height:48px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:#fff;font-weight:bold;overflow:hidden;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-light) 100%)}
 	.family-card-av img{width:100%;height:100%;object-fit:cover;display:block}
 	.family-card-info{flex:1;min-width:0}
@@ -2744,6 +2745,29 @@ function renderFamilyView(personId) {
     '<div class="family-card-detail">' + formatGen(person.gen) + ' · ' + person.gender + '</div></div>' +
     selfBtnHtml +
     '</div>';
+
+  // Siblings section — other children of father
+  var siblings = [];
+  var fatherId = person.parentId;
+  if (fatherId) {
+    var allFatherChildren = getChildren(fatherId);
+    siblings = allFatherChildren.filter(function(c){ return c.id !== person.id; });
+  }
+  if (siblings.length > 0) {
+    html += '<div class="family-section-title">👫 兄弟姐妹（' + siblings.length + '人）</div>';
+    html += '<div class="family-children-grid">';
+    siblings.forEach(function(sib){
+      var sibRel = '';
+      if (selfId && selfId === sib.id) sibRel = '<span class="family-card-relation">⭐ 我</span>';
+      else if (selfId) { var kt5 = getKinshipTerm(selfId, sib.id); if (kt5) sibRel = '<span class="family-card-relation">我的' + kt5 + '</span>'; }
+      html += '<div class="family-card sibling-card" onclick="renderFamilyView(' + sib.id + ')">' +
+        '<div class="family-card-av">' + (sib.photo ? '<img loading="lazy" decoding="async" src="' + sib.photo + '" alt="' + sib.name + '">' : sib.name[0]) + '</div>' +
+        '<div class="family-card-info"><div class="family-card-name">' + sib.name + ' ' + sibRel + '</div>' +
+        '<div class="family-card-detail">' + formatGen(sib.gen) + ' · ' + sib.gender + '</div></div>' +
+        '<span class="family-card-arrow">›</span></div>';
+    });
+    html += '</div>';
+  }
 
 	  // Spouse section — use getMyAllSpouses to handle both directions
 	  var allSpouses = getMyAllSpouses(person.id);
