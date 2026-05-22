@@ -1884,40 +1884,48 @@ function getLettersLocal() {
 function syncLetters() {
   var repo = getGHRepo();
   if (!repo) {
-    _lettersCache = getLettersLocal();
+    if (!_lettersCache || !_lettersCache.length) {
+      _lettersCache = getLettersLocal();
+    }
     updateMailBadge();
     return Promise.resolve();
   }
-  var url = 'https://' + repo.replace('/', '.github.io/') + '/letters.json';
-  return new Promise(function(resolve) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.timeout = 8000;
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          _lettersCache = JSON.parse(xhr.responseText) || [];
-          console.log('[GitHub] Letters synced: ' + _lettersCache.length);
-        } catch(e) {
-          _lettersCache = getLettersLocal();
+  // Try GitHub API first (authoritative), then Pages, keep existing cache on any failure
+  return ghApiGet('letters.json').then(function(res) {
+    if (res.ok && res.data && res.data.content) {
+      try {
+        var decoded = decodeURIComponent(escape(atob(res.data.content.replace(/\s/g, ''))));
+        _lettersCache = JSON.parse(decoded) || [];
+        console.log('[GitHub] Letters synced via API: ' + _lettersCache.length);
+        updateMailBadge();
+        return;
+      } catch(e) {}
+    }
+    // Fall back to GitHub Pages
+    return new Promise(function(resolve) {
+      var url = 'https://' + repo.replace('/', '.github.io/') + '/letters.json';
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url, true);
+      xhr.timeout = 8000;
+      xhr.onload = function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (data && data.length) {
+              _lettersCache = data;
+              console.log('[GitHub] Letters synced via Pages: ' + _lettersCache.length);
+            }
+          } catch(e) {}
         }
-      } else {
-        _lettersCache = getLettersLocal();
-      }
-      updateMailBadge();
-      resolve();
-    };
-    xhr.onerror = function() {
-      _lettersCache = getLettersLocal();
-      updateMailBadge();
-      resolve();
-    };
-    xhr.ontimeout = function() {
-      _lettersCache = getLettersLocal();
-      updateMailBadge();
-      resolve();
-    };
-    xhr.send();
+        updateMailBadge();
+        resolve();
+      };
+      xhr.onerror = function() { updateMailBadge(); resolve(); };
+      xhr.ontimeout = function() { updateMailBadge(); resolve(); };
+      xhr.send();
+    });
+  }).catch(function() {
+    updateMailBadge();
   });
 }
 
@@ -1951,14 +1959,17 @@ function saveLetterToGithub(letter) {
   if (!isGHReady()) return Promise.resolve();
   var newContent = btoa(unescape(encodeURIComponent(JSON.stringify([letter], null, 2))));
   var apiBase = 'https://api.github.com/repos/' + _ghRepo + '/contents/letters.json';
+  var mergedLetters = null; // Will hold the full merged list after successful PUT
 
   return ghApiGet('letters.json').then(function(res) {
     if (res.status === 404) {
-      // Create new file (no SHA needed)
       return fetch(apiBase, {
         method: 'PUT',
         headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: 'Create letters.json', content: newContent, branch: _ghBranch })
+      }).then(function(r) {
+        if (!r.ok) throw new Error('Create failed: ' + r.status);
+        mergedLetters = [letter];
       });
     }
     if (!res.ok) throw new Error('Failed to fetch letters.json: ' + res.status);
@@ -1969,22 +1980,31 @@ function saveLetterToGithub(letter) {
     } catch(e) {}
     currentLetters.push(letter);
     if (currentLetters.length > 200) currentLetters = currentLetters.slice(-200);
+    mergedLetters = currentLetters;
     var updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(currentLetters, null, 2))));
-    // Update existing file (with SHA)
     return fetch(apiBase, {
       method: 'PUT',
       headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: 'Birthday letter for ' + letter.toMemberName, content: updatedContent, sha: res.data.sha, branch: _ghBranch })
+    }).then(function(r) {
+      if (!r.ok) throw new Error('Update failed: ' + r.status);
     });
-  }).then(function(r) {
-    if (r && !r.ok) throw new Error('Failed to update letters.json: ' + r.status);
-    return syncLetters();
+  }).then(function() {
+    // Use the merged data we just PUT — avoids stale GitHub Pages read
+    _lettersCache = mergedLetters;
+    try { localStorage.setItem('ft_birthday_letters', JSON.stringify(mergedLetters)); } catch(ex) {}
+    updateMailBadge();
+    renderMailList();
   }).catch(function(e) {
     console.warn('[GitHub] saveLetter failed:', e.message);
-    var letters = getLettersLocal();
-    letters.push(letter);
-    try { localStorage.setItem('ft_birthday_letters', JSON.stringify(letters)); } catch(ex) {}
-    _lettersCache = letters;
+    // Keep existing cache, just add the new letter
+    var existing = (_lettersCache && _lettersCache.length) ? _lettersCache : getLettersLocal();
+    // Avoid duplicating if the letter was already added optimistically
+    if (!existing.some(function(l) { return l.id === letter.id; })) {
+      existing = existing.concat([letter]);
+    }
+    _lettersCache = existing;
+    try { localStorage.setItem('ft_birthday_letters', JSON.stringify(existing)); } catch(ex) {}
     updateMailBadge();
     renderMailList();
     showToast('已保存到本地' + (e.message ? ' (' + e.message + ')' : ''), 'warning');
