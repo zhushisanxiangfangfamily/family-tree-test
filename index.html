@@ -1695,7 +1695,8 @@ var _fbRemoteCount = 0;
 function startMessagesListener() {
   if (_unsubMessages) _unsubMessages();
   if (!_db) return;
-  _unsubMessages = _db.collection('messages').orderBy('created', 'asc').onSnapshot(function(snapshot) {
+  // Real-time listener
+  _unsubMessages = _db.collection('messages').onSnapshot(function(snapshot) {
     _fbSnapshotCount++;
     var fbMsgs = [];
     snapshot.forEach(function(doc) {
