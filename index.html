@@ -2712,7 +2712,7 @@ function saveConfig() {
     ghRepo: document.getElementById('cfg-gh-repo').value.trim() || null,
     ghToken: document.getElementById('cfg-gh-token').value.trim() || null,
     ghBranch: document.getElementById('cfg-gh-branch').value.trim() || 'main',
-    accounts: config.accounts || []
+    accounts: getAccounts()
   };
   saveData('ft_config', config);
   applyConfig();
