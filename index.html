@@ -1788,7 +1788,7 @@ function updateUserUI() {
   var btn = document.getElementById('user-btn');
   if (!btn) return;
   if (user) {
-    btn.textContent = '\U0001f464 ' + user.memberName;
+    btn.textContent = user.memberName;
     btn.classList.add('logged-in');
     btn.setAttribute('title', '点击退出登录');
   } else {
