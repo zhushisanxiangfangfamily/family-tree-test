@@ -525,13 +525,19 @@ footer{display:none}
 
 /* ===== Account System ===== */
 .user-btn {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--primary); color: #fff; border: 2px solid var(--primary);
-  padding: 6px 14px; border-radius: 20px; font-size: .78rem; cursor: pointer;
-  white-space: nowrap; transition: all .2s; font-family: inherit; font-weight: 600;
+  width: 36px; height: 36px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,.85); font-size: 1.1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.12); transition: all .2s;
+  flex-shrink: 0; padding: 0;
 }
-.user-btn:hover { background: #fff; color: var(--primary); }
-.user-btn.logged-in { background: #fff; color: var(--primary); font-weight: 600; border-color: var(--primary); }
+.user-btn:active { transform: scale(.9); }
+.user-btn.logged-in {
+  width: auto; height: auto; border-radius: 14px;
+  background: var(--primary); color: #fff; padding: 4px 10px;
+  font-size: .72rem; font-weight: 700; box-shadow: none;
+  font-family: inherit;
+}
 
 /* Login overlay */
 .login-overlay {
@@ -1695,7 +1701,7 @@ function updateUserUI() {
     btn.classList.add('logged-in');
     btn.setAttribute('title', '点击退出登录');
   } else {
-    btn.textContent = '\U0001f464 登录';
+    btn.textContent = '\U0001f464';
     btn.classList.remove('logged-in');
     btn.setAttribute('title', '家族成员登录');
   }
