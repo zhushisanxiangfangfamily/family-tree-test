@@ -1701,6 +1701,7 @@ function startLettersListener() {
     renderMailList();
   }, function(err) {
     console.warn('[Firebase] Listener error:', err.message);
+    showToast('云端监听失败: ' + err.message, 'error');
     if (!_lettersCache.length) _lettersCache = getLettersLocal();
     updateMailBadge();
     renderMailList();
@@ -1719,7 +1720,7 @@ function saveLetterToFirestore(letter) {
     try { localStorage.setItem('ft_birthday_letters', JSON.stringify(existing)); } catch(ex) {}
     updateMailBadge();
     renderMailList();
-    showToast('已保存到本地', 'warning');
+    showToast('云端写入失败: ' + e.message, 'error');
   });
 }
 
