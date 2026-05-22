@@ -1528,24 +1528,32 @@ var _lettersCache = [];
 
 function initGithubSync() {
   try {
-    var cfg = JSON.parse(localStorage.getItem('ft_config') || '{}');
-    var repo = getGHRepo();
-    // Set token for write access (optional)
-    if (cfg.ghToken) {
-      _ghToken = cfg.ghToken;
-      _ghRepo = cfg.ghRepo || repo;
-      _ghBranch = cfg.ghBranch || 'master';
+    // Use global config (in-memory) — more reliable than re-reading localStorage
+    var ghToken = (typeof config !== 'undefined' && config.ghToken) ? config.ghToken : '';
+    var ghRepo = (typeof config !== 'undefined' && config.ghRepo) ? config.ghRepo : getGHRepo();
+    var ghBranch = (typeof config !== 'undefined' && config.ghBranch) ? config.ghBranch : 'main';
+
+    if (ghToken) {
+      _ghToken = ghToken;
+      _ghRepo = ghRepo;
+      _ghBranch = ghBranch;
       _ghReady = true;
     } else {
-      _ghRepo = repo;
-      _ghBranch = cfg.ghBranch || 'master';
-      _ghReady = !!cfg.ghToken; // write only with token
+      _ghRepo = ghRepo;
+      _ghBranch = ghBranch;
+      _ghReady = false;
     }
-    if (_ghRepo) {
-      console.log('[GitHub] Repo: ' + _ghRepo + (_ghReady ? ' (read+write)' : ' (read-only)'));
-      updateGHStatus(!!cfg.ghToken);
+
+    if (_ghRepo && _ghToken) {
+      console.log('[GitHub] Repo: ' + _ghRepo + ' (read+write)');
+      updateGHStatus(true);
+      syncAccounts().then(function() { syncLetters(); renderAccountList(); });
+    } else if (_ghRepo) {
+      console.log('[GitHub] Repo: ' + _ghRepo + ' (read-only, no token)');
+      updateGHStatus(false);
       syncAccounts().then(function() { syncLetters(); renderAccountList(); });
     } else {
+      console.log('[GitHub] No repo configured');
       updateGHStatus(false);
     }
   } catch(e) {
@@ -2827,6 +2835,7 @@ function loadConfigForm() {
   document.getElementById('cfg-gh-branch').value = config.ghBranch || 'main';
   populateAcctMemberSelect();
   renderAccountList();
+  updateGHStatus(_ghReady);
 }
 function saveConfig() {
   config = {
