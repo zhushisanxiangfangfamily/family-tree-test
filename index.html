@@ -525,13 +525,13 @@ footer{display:none}
 
 /* ===== Account System ===== */
 .user-btn {
-  width: 36px; height: 36px; border-radius: 50%; border: none;
-  background: rgba(255,255,255,.85); font-size: 1.1rem; cursor: pointer;
+  min-width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary);
+  background: var(--primary); color: #fff; font-size: 1.2rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.12); transition: all .2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15); transition: all .2s;
   flex-shrink: 0; padding: 0;
 }
-.user-btn:active { transform: scale(.9); }
+.user-btn:active { transform: scale(.9); background: #fff; color: var(--primary); }
 .user-btn.logged-in {
   width: auto; height: auto; border-radius: 14px;
   background: var(--primary); color: #fff; padding: 4px 10px;
@@ -1789,25 +1789,28 @@ function updateUserUI() {
 }
 
 function toggleLoginPanel() {
-  var user = getCurrentUser();
-  if (user) {
-    if (confirm('确定退出登录吗？')) {
-      logoutUser();
+  try {
+    var user = getCurrentUser();
+    if (user) {
+      if (confirm('确定退出登录吗？')) {
+        logoutUser();
+      }
+      return;
     }
-    return;
-  }
-  var overlay = document.getElementById('login-overlay');
-  if (overlay.classList.contains('open')) {
-    closeLoginPanel();
-  } else {
-    renderLoginMemberList();
-    overlay.classList.add('open');
-    document.getElementById('login-pin').value = '';
-    document.getElementById('login-error').textContent = '';
-    document.getElementById('login-overlay').removeAttribute('data-selected-id');
-    var chips = document.querySelectorAll('.login-member-chip');
-    for (var i = 0; i < chips.length; i++) { chips[i].classList.remove('selected'); }
-  }
+    var overlay = document.getElementById('login-overlay');
+    if (!overlay) return;
+    if (overlay.classList.contains('open')) {
+      closeLoginPanel();
+    } else {
+      renderLoginMemberList();
+      overlay.classList.add('open');
+      document.getElementById('login-pin').value = '';
+      document.getElementById('login-error').textContent = '';
+      document.getElementById('login-overlay').removeAttribute('data-selected-id');
+      var chips = document.querySelectorAll('.login-member-chip');
+      for (var i = 0; i < chips.length; i++) { chips[i].classList.remove('selected'); }
+    }
+  } catch(e) { console.warn('toggleLoginPanel error:', e); }
 }
 
 function closeLoginPanel() {
