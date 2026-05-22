@@ -1561,6 +1561,7 @@ var _ghPollCount = 0;
 var _ghRemoteCount = 0;
 var _ghPollTimer = null;
 var _ghLastSha = null;
+var _lastRenderedFingerprint = '';
 
 function ghToken() {
   var d = window._ghDefaults;
@@ -4957,6 +4958,11 @@ function renderChatMessages() {
   var myId = user ? user.memberId : -1;
 
   updateChatStatus();
+
+  // Skip re-render if nothing changed (prevents audio interruption during poll)
+  var fp = msgs.length + '|' + (msgs.length ? msgs[msgs.length-1].id : '') + '|' + (msgs.length ? msgs[msgs.length-1].created : '');
+  if (fp === _lastRenderedFingerprint && container.children.length > 0) return;
+  _lastRenderedFingerprint = fp;
 
   // Save playing audio state before destroying DOM
   var playingMsgId = null;
