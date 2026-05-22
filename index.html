@@ -1798,24 +1798,22 @@ function toggleLoginPanel() {
       return;
     }
     var overlay = document.getElementById('login-overlay');
-    showToast('打开登录面板...', 'info');
-    if (!overlay) return;
-    if (overlay.classList.contains('open')) {
+    if (!overlay) { showToast('登录窗口加载失败', 'error'); return; }
+    if (overlay.style.display === 'flex') {
       closeLoginPanel();
-    } else {
-      renderLoginMemberList();
-      overlay.classList.add('open');
-      document.getElementById('login-pin').value = '';
-      document.getElementById('login-error').textContent = '';
-      document.getElementById('login-overlay').removeAttribute('data-selected-id');
-      var chips = document.querySelectorAll('.login-member-chip');
-      for (var i = 0; i < chips.length; i++) { chips[i].classList.remove('selected'); }
+      return;
     }
-  } catch(e) { console.warn('toggleLoginPanel error:', e); }
+    overlay.style.display = 'flex';
+    document.getElementById('login-pin').value = '';
+    document.getElementById('login-error').textContent = '';
+    document.getElementById('login-overlay').removeAttribute('data-selected-id');
+    renderLoginMemberList();
+  } catch(e) { console.warn('toggleLoginPanel error:', e); showToast('登录错误', 'error'); }
 }
 
 function closeLoginPanel() {
-  document.getElementById('login-overlay').classList.remove('open');
+  var overlay = document.getElementById('login-overlay');
+  if (overlay) overlay.style.display = 'none';
 }
 
 function renderLoginMemberList() {
