@@ -526,12 +526,12 @@ footer{display:none}
 /* ===== Account System ===== */
 .user-btn {
   display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.25);
-  padding: 5px 10px; border-radius: 18px; font-size: .78rem; cursor: pointer;
-  white-space: nowrap; transition: all .2s; font-family: inherit;
+  background: var(--primary); color: #fff; border: 2px solid var(--primary);
+  padding: 6px 14px; border-radius: 20px; font-size: .78rem; cursor: pointer;
+  white-space: nowrap; transition: all .2s; font-family: inherit; font-weight: 600;
 }
-.user-btn:hover { background: rgba(255,255,255,.25); }
-.user-btn.logged-in { background: rgba(255,255,255,.9); color: var(--primary); font-weight: 600; border-color: transparent; }
+.user-btn:hover { background: #fff; color: var(--primary); }
+.user-btn.logged-in { background: #fff; color: var(--primary); font-weight: 600; border-color: var(--primary); }
 
 /* Login overlay */
 .login-overlay {
