@@ -1549,6 +1549,7 @@ var _ghRemoteCount = 0;
 var _ghPollTimer = null;
 var _ghLastSha = null;
 var _ghLastFlush = 0;
+var _ghLastEtag = null;
 
 function ghToken() {
   var d = window._ghDefaults;
@@ -1571,7 +1572,7 @@ function initGitHubSync() {
   updateSyncStatus(true);
   showToast('✅ 云端已连接', 'success');
   pollMessages();
-  _ghPollTimer = setInterval(pollMessages, 2000);
+  _ghPollTimer = setInterval(pollMessages, 1500);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
 }
 
@@ -1582,8 +1583,14 @@ function pollMessages() {
   xhr.open('GET', getMessagesUrl(), true);
   xhr.setRequestHeader('Authorization', 'token ' + ghToken());
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  if (_ghLastEtag) xhr.setRequestHeader('If-None-Match', _ghLastEtag);
   xhr.timeout = 8000;
   xhr.onload = function() {
+    // 304 = not modified, skip processing (doesn't count toward rate limit)
+    if (xhr.status === 304) return;
+    // Save ETag for conditional requests
+    var etag = xhr.getResponseHeader('ETag');
+    if (etag) _ghLastEtag = etag;
     if (xhr.status === 200) {
       var data = JSON.parse(xhr.responseText);
       _ghLastSha = data.sha;
@@ -1601,7 +1608,6 @@ function pollMessages() {
       updateChatBadge();
       renderChatMessages();
       updateChatStatus();
-      // Flush local-only messages to server (throttled to every 15s)
       var localOnly = local.filter(function(lm) { return !remote.some(function(rm) { return rm.id === lm.id; }); });
       if (localOnly.length > 0 && Date.now() - _ghLastFlush > 15000) {
         _ghLastFlush = Date.now();
