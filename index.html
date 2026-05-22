@@ -1676,12 +1676,21 @@ function ghApiPut(path, content, sha, cb) {
   xhr.send(JSON.stringify({message:'chat', content:content, sha:sha, branch:window._ghDefaults.branch}));
 }
 
+var _lastPollStart = 0;
+var _lastPollMs = 0;
+var _pollInFlight = false;
 function pollMessages() {
   if (!_ghReady) return;
+  if (_pollInFlight) return; // skip if previous poll still waiting for response
   _ghPollCount++;
+  _lastPollStart = Date.now();
+  _pollInFlight = true;
   ghApiGet(function(err, data) {
-    if (err) return;
-    if (!data) { _ghRemoteCount = 0; return; }
+    _pollInFlight = false;
+    var elapsed = Date.now() - _lastPollStart;
+    _lastPollMs = elapsed;
+    if (err) { updateChatStatus(); return; }
+    if (!data) { _ghRemoteCount = 0; updateChatStatus(); return; }
     _ghLastSha = data.sha;
     var remote = [];
     try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
@@ -1699,15 +1708,17 @@ function pollMessages() {
   });
 }
 
+var _saveStartTime = 0;
 function saveMessageToGithub(msg, retryCount) {
   retryCount = retryCount || 0;
-  if (retryCount === 0) showToast('⏳ 同步中...', 'info');
+  if (retryCount === 0) { _saveStartTime = Date.now(); showToast('⏳ 同步中...', 'info'); }
 
   ghApiGet(function(err, data) {
     if (err) {
       if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        showToast('⚠️ 已存本地 (GET失败:' + err + ')', 'warning');
         fallbackSaveLocal(msg);
       }
       return;
@@ -1726,7 +1737,8 @@ function saveMessageToGithub(msg, retryCount) {
     ghApiPut('data/messages.json', content, sha, function(err2, putData) {
       if (!err2) {
         _ghLastSha = putData.content.sha;
-        showToast('✅ 已同步', 'success');
+        var totalSec = ((Date.now() - _saveStartTime) / 1000).toFixed(1);
+        showToast('✅ 已同步 (' + totalSec + 's)', 'success');
         _messagesCache = existing;
         try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
         updateChatBadge();
@@ -1737,6 +1749,7 @@ function saveMessageToGithub(msg, retryCount) {
       } else if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        showToast('⚠️ 已存本地 (PUT失败:' + err2 + ')', 'warning');
         fallbackSaveLocal(msg);
       }
     });
@@ -4959,7 +4972,8 @@ function updateChatStatus() {
   if (isGHReady()) {
     var localCount = 0;
     try { localCount = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]').length; } catch(e) {}
-    el.textContent = (_ghReady?'🟢':'🔴') + ' 云端' + _ghRemoteCount + ' · 本地' + localCount + ' · 轮询#' + _ghPollCount;
+    var timing = _lastPollMs ? ' · ' + _lastPollMs + 'ms' : '';
+    el.textContent = (_ghReady?'🟢':'🔴') + ' 云端' + _ghRemoteCount + ' · 本地' + localCount + ' · 轮询#' + _ghPollCount + timing;
   } else {
     el.textContent = '⚡ 本地模式';
   }
