@@ -1525,6 +1525,9 @@ var _ghRepo = '';
 var _ghToken = '';
 var _ghBranch = 'master';
 var _lettersCache = [];
+var _pollTimer = null;
+var _pollBusy = false;
+var _pollInterval = 8000; // 8 seconds
 
 function getGHRepo() {
   // Use embedded defaults or localStorage config
@@ -1569,15 +1572,20 @@ function initGithubSync() {
     if (_ghRepo && _ghToken) {
       console.log('[GitHub] Repo: ' + _ghRepo + ' (read+write)');
       updateGHStatus(true);
-      syncAccounts().then(function() { syncLetters(); renderAccountList(); });
+      syncAccounts().then(function() { syncLetters().then(function() { startPolling(); }); renderAccountList(); });
     } else if (_ghRepo) {
       console.log('[GitHub] Repo: ' + _ghRepo + ' (read-only, no token)');
       updateGHStatus(false);
-      syncAccounts().then(function() { syncLetters(); renderAccountList(); });
+      syncAccounts().then(function() { syncLetters().then(function() { startPolling(); }); renderAccountList(); });
     } else {
       console.log('[GitHub] No repo configured');
       updateGHStatus(false);
     }
+    // Pause polling when tab is hidden (save battery), resume when visible
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) { stopPolling(); }
+      else if (isGHReady()) { pollLetters(); startPolling(); }
+    });
   } catch(e) {
     console.warn('[GitHub] Init failed:', e.message);
     _ghReady = false;
@@ -1927,6 +1935,47 @@ function syncLetters() {
   }).catch(function() {
     updateMailBadge();
   });
+}
+
+function pollLetters() {
+  if (_pollBusy || !isGHReady()) return;
+  _pollBusy = true;
+  return ghApiGet('letters.json').then(function(res) {
+    _pollBusy = false;
+    if (!res.ok || !res.data || !res.data.content) return;
+    try {
+      var decoded = decodeURIComponent(escape(atob(res.data.content.replace(/\s/g, ''))));
+      var remote = JSON.parse(decoded) || [];
+      var existingIds = {};
+      for (var i = 0; i < _lettersCache.length; i++) {
+        existingIds[_lettersCache[i].id] = true;
+      }
+      var hasNew = false;
+      for (var j = 0; j < remote.length; j++) {
+        if (!existingIds[remote[j].id]) {
+          _lettersCache.push(remote[j]);
+          hasNew = true;
+        }
+      }
+      if (hasNew) {
+        _lettersCache.sort(function(a, b) { return a.created - b.created; });
+        try { localStorage.setItem('ft_birthday_letters', JSON.stringify(_lettersCache)); } catch(ex) {}
+        updateMailBadge();
+        renderMailList();
+      }
+    } catch(e) {}
+  }).catch(function() {
+    _pollBusy = false;
+  });
+}
+
+function startPolling() {
+  stopPolling();
+  _pollTimer = setInterval(pollLetters, _pollInterval);
+}
+
+function stopPolling() {
+  if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
 }
 
 function ghApiGet(path) {
