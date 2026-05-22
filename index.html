@@ -4958,6 +4958,23 @@ function renderChatMessages() {
 
   updateChatStatus();
 
+  // Save playing audio state before destroying DOM
+  var playingMsgId = null;
+  var playingTime = 0;
+  var wasPlaying = false;
+  var playingAudios = container.querySelectorAll('audio');
+  for (var ai = 0; ai < playingAudios.length; ai++) {
+    var a = playingAudios[ai];
+    if (!a.paused) {
+      wasPlaying = true;
+      playingTime = a.currentTime;
+      // Extract msg ID from audio id: "va1234567890" -> 1234567890
+      playingMsgId = parseInt(a.id.replace('va', ''));
+      try { a.pause(); } catch(e) {}
+      break;
+    }
+  }
+
   if (msgs.length === 0) {
     container.innerHTML = '<div class="chat-empty">暂无消息，快来聊天吧 💬</div>';
     return;
@@ -5014,6 +5031,18 @@ function renderChatMessages() {
       '<div class="chat-time">' + timeStr + '</div>' +
       '</div>';
   }).join('');
+
+  // Restore playing audio state
+  if (wasPlaying && playingMsgId) {
+    var restoreAudio = document.getElementById('va' + playingMsgId);
+    var restoreBtn = document.getElementById('vpb-' + playingMsgId);
+    if (restoreAudio) {
+      restoreAudio.currentTime = playingTime;
+      restoreAudio.play().then(function() {
+        if (restoreBtn) { restoreBtn.classList.add('playing'); restoreBtn.textContent = '⏸'; }
+      }).catch(function() {});
+    }
+  }
 
   // Scroll to bottom after render
   setTimeout(scrollChatToBottom, 100);
