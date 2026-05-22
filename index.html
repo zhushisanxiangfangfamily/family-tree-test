@@ -1798,6 +1798,7 @@ function toggleLoginPanel() {
       return;
     }
     var overlay = document.getElementById('login-overlay');
+    showToast('打开登录面板...', 'info');
     if (!overlay) return;
     if (overlay.classList.contains('open')) {
       closeLoginPanel();
