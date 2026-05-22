@@ -1552,13 +1552,18 @@ var _firebaseConfig = {
 };
 
 function initFirebase() {
+  if (typeof firebase === 'undefined') {
+    console.warn('[Firebase] SDK not loaded');
+    _fbReady = false;
+    updateSyncStatus(false);
+    _lettersCache = getLettersLocal();
+    return;
+  }
   try {
     firebase.initializeApp(_firebaseConfig);
     _db = firebase.firestore();
-    // Enable offline persistence for faster loads
-    _db.enablePersistence({ synchronizeTabs: false }).catch(function() {});
     _fbReady = true;
-    console.log('[Firebase] Ready');
+    console.log('[Firebase] Ready, starting listener...');
     updateSyncStatus(true);
     startLettersListener();
     syncAccountsFromFirestore().then(function() { renderAccountList(); });
