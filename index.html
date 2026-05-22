@@ -1605,6 +1605,7 @@ function pollMessages() {
     }
   };
   xhr.onerror = function() {};
+  xhr.ontimeout = function() {};
   xhr.send();
 }
 
@@ -1649,22 +1650,26 @@ function saveMessageToGithub(msg, retryCount) {
         fallbackSaveLocal(msg);
       }
     };
-    xhrPut.onerror = function() {
+    var putFailed = function() {
       if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 1500);
       } else {
         fallbackSaveLocal(msg);
       }
     };
+    xhrPut.onerror = putFailed;
+    xhrPut.ontimeout = putFailed;
     xhrPut.send(JSON.stringify({message:'chat', content:content, sha:sha, branch:window._ghDefaults.branch}));
   };
-  xhrGet.onerror = function() {
+  var getFailed = function() {
     if (retryCount < 2) {
       setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 1500);
     } else {
       fallbackSaveLocal(msg);
     }
   };
+  xhrGet.onerror = getFailed;
+  xhrGet.ontimeout = getFailed;
   xhrGet.send();
 }
 
@@ -1709,7 +1714,7 @@ function flushUnsentIfNeeded() {
     unsent.forEach(function(m) { if (!merged[m.id]) merged[m.id] = m; });
     existing = Object.values(merged).sort(function(a,b) { return a.created - b.created; });
     if (existing.length > 500) existing = existing.slice(-500);
-    if (existing.length <= _ghRemoteCount) return; // nothing new
+    if (existing.length <= _ghRemoteCount) return;
     var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
     var xhrPut = new XMLHttpRequest();
     xhrPut.open('PUT', getMessagesUrl() + '&_=' + Date.now(), true);
@@ -1725,8 +1730,12 @@ function flushUnsentIfNeeded() {
         try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
       }
     };
+    xhrPut.onerror = function() {};
+    xhrPut.ontimeout = function() {};
     xhrPut.send(JSON.stringify({message:'flush', content:content, sha:sha, branch:window._ghDefaults.branch}));
   };
+  xhrGet.onerror = function() {};
+  xhrGet.ontimeout = function() {};
   xhrGet.send();
 }
 
