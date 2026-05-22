@@ -1629,7 +1629,7 @@ function renderAccountList() {
       '<span><span class="account-item-name">' + escHtml(a.memberName) + '</span>' +
       (a.isAdmin ? '<span class="account-item-badge">管理员</span>' : '') +
       '</span>' +
-      '<span style="font-size:.7rem;color:var(--text-light);margin-left:8px">PIN: ' + escHtml(a.pin) + '</span>' +
+      '<span style="font-size:.7rem;color:var(--text-light);margin-left:8px">PIN: ****</span>' +
       '<button class="account-item-del" onclick="deleteAccount(' + a.memberId + ')">删除</button>' +
       '</div>';
   }).join('');
@@ -1736,9 +1736,15 @@ function closeLoginPanel() {
 function renderLoginMemberList() {
   var list = document.getElementById('login-member-list');
   if (!list) return;
+  var accounts = getAccounts();
+  if (accounts.length === 0) {
+    document.getElementById('login-card-sub').textContent = '暂无账号，请联系管理员创建';
+    list.innerHTML = '<div style="text-align:center;font-size:.82rem;color:var(--text-light);padding:12px">请管理员登录后<br>在"👤 账号管理"中创建账号</div>';
+    return;
+  }
   document.getElementById('login-card-sub').textContent = '请选择你的身份并输入PIN码';
   list.innerHTML = members.map(function(m) {
-    var hasAcct = getAccounts().some(function(a) { return a.memberId === m.id; });
+    var hasAcct = accounts.some(function(a) { return a.memberId === m.id; });
     if (!hasAcct) return '';
     return '<span class="login-member-chip" data-id="' + m.id + '" onclick="selectLoginMember(' + m.id + ', this)">' + escHtml(m.name) + '</span>';
   }).join('');
