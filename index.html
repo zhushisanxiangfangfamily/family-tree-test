@@ -1731,12 +1731,27 @@ function startMessagesListener() {
 }
 
 function saveMessageToFirestore(msg) {
-  if (!_fbReady) return Promise.resolve();
-  return _db.collection('messages').add(msg).then(function(docRef) {
+  if (!_fbReady) {
+    showToast('⚠️ 云端未连接, 仅本地保存', 'warning');
+    return Promise.resolve();
+  }
+  if (!_db) {
+    showToast('⚠️ 数据库未初始化', 'warning');
+    return Promise.resolve();
+  }
+  showToast('⏳ 同步中...', 'info');
+  // Timeout after 10 seconds
+  var timeoutId;
+  var timeoutPromise = new Promise(function(_, reject) {
+    timeoutId = setTimeout(function() { reject(new Error('连接超时')); }, 10000);
+  });
+  return Promise.race([_db.collection('messages').add(msg), timeoutPromise]).then(function(docRef) {
+    clearTimeout(timeoutId);
     console.log('[Firebase] Write OK, docId=' + docRef.id);
     showToast('✅ 已同步', 'success');
     updateChatStatus();
   }).catch(function(e) {
+    clearTimeout(timeoutId);
     console.warn('[Firebase] Save failed:', e.message);
     showToast('❌ 同步失败: ' + e.message, 'error');
     var existing = (_messagesCache && _messagesCache.length) ? _messagesCache : getMessagesLocal();
@@ -4742,7 +4757,7 @@ function updateChatStatus() {
   if (isGHReady()) {
     var localCount = 0;
     try { localCount = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]').length; } catch(e) {}
-    el.textContent = '🟢 云端' + _fbRemoteCount + '条 · 本地' + localCount + '条 · 快照#' + _fbSnapshotCount;
+    el.textContent = (_fbReady?'🟢':'🔴') + ' 云端' + _fbRemoteCount + ' · 本地' + localCount + ' · 快照#' + _fbSnapshotCount;
   } else {
     el.textContent = '⚡ 本地模式';
   }
