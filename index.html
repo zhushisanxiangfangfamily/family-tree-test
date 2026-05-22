@@ -1582,7 +1582,7 @@ function pollMessages() {
   xhr.open('GET', getMessagesUrl() + '&_=' + Date.now(), true);
   xhr.setRequestHeader('Authorization', 'token ' + ghToken());
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhr.timeout = 8000;
+  xhr.timeout = 15000;
   xhr.onload = function() {
     if (xhr.status === 200) {
       var data = JSON.parse(xhr.responseText);
@@ -1616,7 +1616,7 @@ function saveMessageToGithub(msg, retryCount) {
   xhrGet.open('GET', getMessagesUrl() + '&_=' + Date.now(), true);
   xhrGet.setRequestHeader('Authorization', 'token ' + ghToken());
   xhrGet.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhrGet.timeout = 8000;
+  xhrGet.timeout = 15000;
   xhrGet.onload = function() {
     var existing = [], sha = null;
     if (xhrGet.status === 200) {
@@ -1634,7 +1634,7 @@ function saveMessageToGithub(msg, retryCount) {
     xhrPut.setRequestHeader('Authorization', 'token ' + ghToken());
     xhrPut.setRequestHeader('Accept', 'application/vnd.github.v3+json');
     xhrPut.setRequestHeader('Content-Type', 'application/json');
-    xhrPut.timeout = 10000;
+    xhrPut.timeout = 20000;
     xhrPut.onload = function() {
       if (xhrPut.status === 200 || xhrPut.status === 201) {
         _ghLastSha = JSON.parse(xhrPut.responseText).content.sha;
@@ -1652,7 +1652,7 @@ function saveMessageToGithub(msg, retryCount) {
     };
     var putFailed = function() {
       if (retryCount < 2) {
-        setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 1500);
+        setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
         fallbackSaveLocal(msg);
       }
@@ -1663,7 +1663,7 @@ function saveMessageToGithub(msg, retryCount) {
   };
   var getFailed = function() {
     if (retryCount < 2) {
-      setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 1500);
+      setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
     } else {
       fallbackSaveLocal(msg);
     }
@@ -1701,7 +1701,7 @@ function flushUnsentIfNeeded() {
   xhrGet.open('GET', getMessagesUrl() + '&_=' + Date.now(), true);
   xhrGet.setRequestHeader('Authorization', 'token ' + ghToken());
   xhrGet.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhrGet.timeout = 8000;
+  xhrGet.timeout = 15000;
   xhrGet.onload = function() {
     var existing = [], sha = null;
     if (xhrGet.status === 200) {
@@ -1721,7 +1721,7 @@ function flushUnsentIfNeeded() {
     xhrPut.setRequestHeader('Authorization', 'token ' + ghToken());
     xhrPut.setRequestHeader('Accept', 'application/vnd.github.v3+json');
     xhrPut.setRequestHeader('Content-Type', 'application/json');
-    xhrPut.timeout = 10000;
+    xhrPut.timeout = 20000;
     xhrPut.onload = function() {
       if (xhrPut.status === 200 || xhrPut.status === 201) {
         _ghLastSha = JSON.parse(xhrPut.responseText).content.sha;
