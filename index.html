@@ -1568,13 +1568,13 @@ function initGitHubSync() {
   updateSyncStatus(true);
   showToast('✅ 云端已连接', 'success');
   if (_ghPollTimer) clearInterval(_ghPollTimer);
-  // Delay first poll by 5s so UI loads first, then poll every 30s
+  // Async native bridge — fast polling won't block UI
   setTimeout(function() {
     pollMessages();
-    _ghPollTimer = setInterval(pollMessages, 30000);
-  }, 5000);
-  // Background flush for unsent messages every 60s
-  setInterval(flushUnsentIfNeeded, 60000);
+    _ghPollTimer = setInterval(pollMessages, 5000);
+  }, 1500);
+  // Background flush for unsent messages every 30s
+  setInterval(flushUnsentIfNeeded, 30000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
 }
 
