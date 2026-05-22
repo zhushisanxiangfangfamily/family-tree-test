@@ -1749,7 +1749,7 @@ function populateAcctMemberSelect() {
 // ===== LOGIN / LOGOUT =====
 function getCurrentUser() {
   try {
-    var u = sessionStorage.getItem('ft_user');
+    var u = localStorage.getItem('ft_user');
     return u ? JSON.parse(u) : null;
   } catch(e) { return null; }
 }
@@ -1770,7 +1770,7 @@ function loginWithPin(memberId, pin) {
     memberName: acct.memberName,
     isAdmin: !!acct.isAdmin
   };
-  sessionStorage.setItem('ft_user', JSON.stringify(user));
+  localStorage.setItem('ft_user', JSON.stringify(user));
   updateUserUI();
   closeLoginPanel();
   showToast('欢迎，' + user.memberName + '！', 'success');
@@ -1789,7 +1789,7 @@ function doLoginWithPin() {
 }
 
 function logoutUser() {
-  sessionStorage.removeItem('ft_user');
+  localStorage.removeItem('ft_user');
   updateUserUI();
   showToast('已退出登录');
 }
@@ -1977,7 +1977,7 @@ function saveLetterToGithub(letter) {
     if (!res.ok) throw new Error('Failed to fetch letters.json: ' + res.status);
     var currentLetters = [];
     try {
-      var decoded = atob(res.data.content.replace(/\s/g, ''));
+      var decoded = decodeURIComponent(escape(atob(res.data.content.replace(/\s/g, ''))));
       currentLetters = JSON.parse(decoded);
     } catch(e) {}
     currentLetters.push(letter);
@@ -2002,7 +2002,7 @@ function deleteLetterFromGithub(letterId) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     var currentLetters = [];
     try {
-      var decoded = atob(res.data.content.replace(/\s/g, ''));
+      var decoded = decodeURIComponent(escape(atob(res.data.content.replace(/\s/g, ''))));
       currentLetters = JSON.parse(decoded);
     } catch(e) {}
     // Find by letter id (not index)
