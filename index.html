@@ -1568,27 +1568,51 @@ function initGitHubSync() {
   updateSyncStatus(true);
   showToast('✅ 云端已连接', 'success');
   if (_ghPollTimer) clearInterval(_ghPollTimer);
-  pollMessages();
-  _ghPollTimer = setInterval(pollMessages, 2000);
-  // Background flush for unsent messages every 15s
-  setInterval(flushUnsentIfNeeded, 15000);
+  // Delay first poll by 5s so UI loads first, then poll every 30s
+  setTimeout(function() {
+    pollMessages();
+    _ghPollTimer = setInterval(pollMessages, 30000);
+  }, 5000);
+  // Background flush for unsent messages every 60s
+  setInterval(flushUnsentIfNeeded, 60000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
 }
 
-// Wrapper: GitHub API GET via Android native bridge (preferred) or XHR fallback
-function ghApiGet(cb) {
-  if (window.Android && typeof window.Android.ghGet === 'function') {
-    var raw;
-    try { raw = Android.ghGet('data/messages.json'); } catch(e) { cb(e.message); return; }
-    var resp;
-    try { resp = JSON.parse(raw); } catch(e) { cb('parse error'); return; }
-    if (resp.ok && resp.status === 200) {
-      cb(null, resp.data);
-    } else if (resp.status === 404) {
-      cb(null, null);
+// Callback registry for async native bridge calls
+var _ghCallbacks = {};
+var _ghCbId = 0;
+
+// Called by Java when an async native call completes
+window._ghCb = function(callbackId) {
+  var raw = Android.ghTakeResult(callbackId);
+  var entry = _ghCallbacks[callbackId];
+  delete _ghCallbacks[callbackId];
+  if (!entry) return;
+  var resp;
+  try { resp = JSON.parse(raw); } catch(e) { entry.cb('parse error'); return; }
+  if (entry.isPut) {
+    if (resp.ok && (resp.status === 200 || resp.status === 201)) {
+      entry.cb(null, resp.data);
     } else {
-      cb(resp.error || ('status ' + resp.status));
+      entry.cb(resp.error || ('status ' + resp.status));
     }
+  } else {
+    if (resp.ok && resp.status === 200) {
+      entry.cb(null, resp.data);
+    } else if (resp.status === 404) {
+      entry.cb(null, null);
+    } else {
+      entry.cb(resp.error || ('status ' + resp.status));
+    }
+  }
+};
+
+// Wrapper: GitHub API GET via Android native bridge (async, non-blocking) or XHR fallback
+function ghApiGet(cb) {
+  if (window.Android && typeof window.Android.ghGetAsync === 'function') {
+    var id = 'g' + (++_ghCbId);
+    _ghCallbacks[id] = {cb: cb, isPut: false};
+    Android.ghGetAsync('data/messages.json', id);
     return;
   }
   // XHR fallback
@@ -1611,18 +1635,12 @@ function ghApiGet(cb) {
   xhr.send();
 }
 
-// Wrapper: GitHub API PUT via Android native bridge (preferred) or XHR fallback
+// Wrapper: GitHub API PUT via Android native bridge (async, non-blocking) or XHR fallback
 function ghApiPut(content, sha, cb) {
-  if (window.Android && typeof window.Android.ghPut === 'function') {
-    var raw;
-    try { raw = Android.ghPut('data/messages.json', content, sha || '', 'chat'); } catch(e) { cb(e.message); return; }
-    var resp;
-    try { resp = JSON.parse(raw); } catch(e) { cb('parse error'); return; }
-    if (resp.ok && (resp.status === 200 || resp.status === 201)) {
-      cb(null, resp.data);
-    } else {
-      cb(resp.error || ('status ' + resp.status));
-    }
+  if (window.Android && typeof window.Android.ghPutAsync === 'function') {
+    var id = 'p' + (++_ghCbId);
+    _ghCallbacks[id] = {cb: cb, isPut: true};
+    Android.ghPutAsync('data/messages.json', content, sha || '', 'chat', id);
     return;
   }
   // XHR fallback
