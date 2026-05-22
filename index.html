@@ -1570,6 +1570,7 @@ function initGitHubSync() {
   console.log('[GitHub] Sync ready');
   updateSyncStatus(true);
   showToast('✅ 云端已连接', 'success');
+  if (_ghPollTimer) clearInterval(_ghPollTimer);
   pollMessages();
   _ghPollTimer = setInterval(pollMessages, 2000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
@@ -4640,23 +4641,36 @@ function sendChatMessage() {
   };
 
   // Always save locally first
-  var msgs = getMessages();
-  msgs.push(msg);
-  saveMessages(msgs);
-  _messagesCache = msgs;
-  // Clear input
-  input.value = '';
-  updateChatBadge();
-  renderChatMessages();
-  scrollChatToBottom();
-  // Sync to GitHub
-  saveMessageToGithub(msg);
+  try {
+    var msgs = getMessages();
+    msgs.push(msg);
+    saveMessages(msgs);
+    _messagesCache = msgs;
+    input.value = '';
+    updateChatBadge();
+    renderChatMessages();
+    scrollChatToBottom();
+    // Sync to GitHub
+    saveMessageToGithub(msg);
+  } catch(e) {
+    // Fallback: direct save in case of any error
+    var fallback = [];
+    try { fallback = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]'); } catch(ex) {}
+    fallback.push(msg);
+    try { localStorage.setItem('ft_chat_messages', JSON.stringify(fallback)); } catch(ex) {}
+    _messagesCache = fallback;
+    if (input) input.value = '';
+    updateChatBadge();
+    renderChatMessages();
+    scrollChatToBottom();
+    showToast('⚠️ 已存本地', 'warning');
+  }
 }
 
 function getMessages() {
   var local = [];
   try { local = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]'); } catch(e) {}
-  if (isGHReady()) {
+  if (isGHReady() && _messagesCache && _messagesCache.length > 0) {
     var result = _messagesCache.slice();
     local.forEach(function(ll) {
       if (!result.some(function(rl) { return rl.id === ll.id; })) {
