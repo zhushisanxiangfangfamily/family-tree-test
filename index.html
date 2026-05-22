@@ -534,6 +534,19 @@ footer{display:none}
 .chat-send-btn{width:38px;height:38px;border-radius:50%;border:none;background:#4A90D9;color:#fff;font-size:1rem;cursor:pointer;flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .chat-send-btn:active{transform:scale(.9)}
 .chat-send-btn:disabled{background:#ccc;cursor:not-allowed}
+.chat-mic-btn{width:38px;height:38px;border-radius:50%;border:none;background:#f0f0f0;color:#666;font-size:1.1rem;cursor:pointer;flex-shrink:0;transition:all .15s;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+.chat-mic-btn:active{transform:scale(.9)}
+.chat-mic-btn:disabled{background:#f5f5f5;color:#ccc;cursor:not-allowed}
+.chat-mic-btn.recording{background:#ff4444;color:#fff;animation:mic-pulse .8s infinite}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,.5)}50%{box-shadow:0 0 0 10px rgba(255,68,68,0)}}
+.chat-voice-player{display:inline-flex;align-items:center;gap:6px;min-width:140px;max-width:220px;height:34px}
+.chat-voice-player .voice-play-btn{width:30px;height:30px;border-radius:50%;border:none;background:#4A90D9;color:#fff;font-size:.75rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.chat-voice-player .voice-play-btn.playing{background:#ff6b6b}
+.chat-voice-player .voice-wave{flex:1;height:20px;display:flex;align-items:center;gap:2px}
+.chat-voice-player .voice-wave-bar{flex:1;background:#ddd;border-radius:2px;min-width:2px}
+.chat-bubble.own .chat-voice-player .voice-wave-bar{background:rgba(255,255,255,.5)}
+.chat-voice-player .voice-dur{font-size:.7rem;color:#999;flex-shrink:0}
+.chat-bubble.own .chat-voice-player .voice-dur{color:rgba(255,255,255,.7)}
 .chat-login-hint{font-size:.65rem;color:#999;text-align:center;padding:6px;flex-shrink:0}
 .chat-date-sep{text-align:center;font-size:.65rem;color:#bbb;padding:8px 0;margin:4px 0}
 
@@ -4682,6 +4695,120 @@ function closeBirthdayPopup() {
 }
 
 // ===== CHAT =====
+var _mediaRecorder = null;
+var _audioChunks = [];
+var _recordStartTime = 0;
+var _recording = false;
+
+function getSupportedAudioMime() {
+  var types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/aac', 'audio/ogg;codecs=opus'];
+  for (var i = 0; i < types.length; i++) {
+    if (MediaRecorder.isTypeSupported(types[i])) return types[i];
+  }
+  return 'audio/webm';
+}
+
+function startRecording(e) {
+  if (_recording) return;
+  var user = getCurrentUser();
+  if (!user) {
+    showToast('请先登录后再发言', 'warning');
+    return;
+  }
+  e.preventDefault();
+  _recording = true;
+  var micBtn = document.getElementById('chat-mic-btn');
+  if (micBtn) {
+    micBtn.classList.add('recording');
+    micBtn.textContent = '●';
+  }
+  showToast('🎤 录音中...', 'info');
+
+  navigator.mediaDevices.getUserMedia({audio: true}).then(function(stream) {
+    if (!_recording) {
+      stream.getTracks().forEach(function(t) { t.stop(); });
+      return;
+    }
+    var mimeType = getSupportedAudioMime();
+    _audioChunks = [];
+    _recordStartTime = Date.now();
+    _mediaRecorder = new MediaRecorder(stream, {mimeType: mimeType});
+    _mediaRecorder.ondataavailable = function(ev) {
+      if (ev.data && ev.data.size > 0) _audioChunks.push(ev.data);
+    };
+    _mediaRecorder.onstop = function() {
+      stream.getTracks().forEach(function(t) { t.stop(); });
+      if (_audioChunks.length === 0) return;
+      var blob = new Blob(_audioChunks, {type: mimeType});
+      var duration = Math.max(1, Math.round((Date.now() - _recordStartTime) / 1000));
+      var reader = new FileReader();
+      reader.onloadend = function() {
+        var base64 = reader.result.split(',')[1];
+        sendVoiceMessage(base64, duration, mimeType);
+      };
+      reader.readAsDataURL(blob);
+    };
+    _mediaRecorder.start(250);
+  }).catch(function(err) {
+    _recording = false;
+    var micBtn = document.getElementById('chat-mic-btn');
+    if (micBtn) { micBtn.classList.remove('recording'); micBtn.textContent = '🎤'; }
+    showToast('无法访问麦克风: ' + (err.message || '权限未授予'), 'error');
+  });
+}
+
+function stopRecording(e) {
+  if (!_recording) return;
+  e.preventDefault();
+  _recording = false;
+  var micBtn = document.getElementById('chat-mic-btn');
+  if (micBtn) {
+    micBtn.classList.remove('recording');
+    micBtn.textContent = '🎤';
+  }
+  if (_mediaRecorder && _mediaRecorder.state === 'recording') {
+    _mediaRecorder.stop();
+  }
+}
+
+function sendVoiceMessage(base64, duration, mimeType) {
+  var user = getCurrentUser();
+  if (!user) return;
+
+  var msg = {
+    id: Date.now(),
+    fromMemberId: user.memberId,
+    fromMemberName: user.memberName,
+    type: 'voice',
+    audioBase64: base64,
+    audioMime: mimeType,
+    duration: duration,
+    created: Date.now()
+  };
+
+  try {
+    var msgs = getMessages();
+    msgs.push(msg);
+    saveMessages(msgs);
+    _messagesCache = msgs;
+    updateChatBadge();
+    renderChatMessages();
+    scrollChatToBottom();
+    saveMessageToGithub(msg);
+    showToast('✅ 语音已发送 (' + duration + '″)', 'success');
+  } catch(e) {
+    var fallback = [];
+    try { fallback = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]'); } catch(ex) {}
+    fallback.push(msg);
+    try { localStorage.setItem('ft_chat_messages', JSON.stringify(fallback)); } catch(ex) {}
+    _messagesCache = fallback;
+    updateChatBadge();
+    renderChatMessages();
+    scrollChatToBottom();
+    showToast('⚠️ 已存本地', 'warning');
+  }
+}
+
 function sendChatMessage() {
   var user = getCurrentUser();
   if (!user) {
@@ -4697,6 +4824,7 @@ function sendChatMessage() {
     id: Date.now(),
     fromMemberId: user.memberId,
     fromMemberName: user.memberName,
+    type: 'text',
     text: text,
     created: Date.now()
   };
@@ -4783,14 +4911,17 @@ function updateChatInputState() {
   var user = getCurrentUser();
   var input = document.getElementById('chat-input');
   var btn = document.getElementById('chat-send-btn');
+  var mic = document.getElementById('chat-mic-btn');
   var hint = document.getElementById('chat-login-hint');
   if (user) {
     if (input) { input.disabled = false; input.placeholder = '输入消息...'; }
     if (btn) btn.disabled = false;
+    if (mic) mic.disabled = false;
     if (hint) hint.style.display = 'none';
   } else {
     if (input) { input.disabled = true; input.placeholder = '请先登录后再发言'; }
     if (btn) btn.disabled = true;
+    if (mic) mic.disabled = true;
     if (hint) hint.style.display = 'block';
   }
 }
@@ -4850,10 +4981,36 @@ function renderChatMessages() {
     var bubbleClass = isOwn ? 'chat-bubble own' : 'chat-bubble other';
     var senderName = isOwn ? '' : m.fromMemberName || '匿名';
     var senderHTML = senderName ? '<div class="chat-sender">' + escHtml(senderName) + '</div>' : '';
+
+    var contentHTML;
+    if (m.type === 'voice' && m.audioBase64) {
+      var mime = m.audioMime || 'audio/webm';
+      var dur = m.duration || 1;
+      var barsHTML = '';
+      for (var bi = 0; bi < Math.min(dur, 15); bi++) {
+        var bh = 4 + Math.floor(Math.random() * 16);
+        barsHTML += '<span class="voice-wave-bar" style="height:' + bh + 'px"></span>';
+      }
+      // Use a unique ID per message for the audio element
+      var audioId = 'va' + m.id;
+      contentHTML =
+        '<div class="chat-voice-player" data-msg-id="' + m.id + '">' +
+        '<button class="voice-play-btn" id="vpb-' + m.id + '" onclick="toggleVoicePlay(\'' + audioId + '\',\'vpb-' + m.id + '\')">▶</button>' +
+        '<div class="voice-wave">' + barsHTML + '</div>' +
+        '<span class="voice-dur">' + dur + '″</span>' +
+        '<audio id="' + audioId + '" src="data:' + mime + ';base64,' + m.audioBase64 + '" preload="metadata" style="display:none" ' +
+        'onended="onVoiceEnded(\'vpb-' + m.id + '\')" ' +
+        'onloadedmetadata="onVoiceLoaded(\'vpb-' + m.id + '\',this)" ' +
+        'onerror="onVoiceError(\'vpb-' + m.id + '\')"></audio>' +
+        '</div>';
+    } else {
+      contentHTML = escHtml(m.text || '');
+    }
+
     return dateSep +
       '<div class="' + rowClass + '">' +
       senderHTML +
-      '<div class="' + bubbleClass + '">' + escHtml(m.text) + '</div>' +
+      '<div class="' + bubbleClass + '">' + contentHTML + '</div>' +
       '<div class="chat-time">' + timeStr + '</div>' +
       '</div>';
   }).join('');
@@ -4867,6 +5024,42 @@ function scrollChatToBottom() {
   if (container) {
     container.scrollTop = container.scrollHeight;
   }
+}
+
+function toggleVoicePlay(audioId, btnId) {
+  var audio = document.getElementById(audioId);
+  var btn = document.getElementById(btnId);
+  if (!audio || !btn) return;
+  // Pause all other playing audio
+  document.querySelectorAll('.chat-voice-player audio').forEach(function(el) {
+    if (el.id !== audioId && !el.paused) { el.pause(); el.currentTime = 0; }
+  });
+  document.querySelectorAll('.voice-play-btn.playing').forEach(function(el) {
+    if (el.id !== btnId) el.classList.remove('playing');
+  });
+  if (audio.paused) {
+    audio.play().catch(function() {});
+    btn.classList.add('playing');
+    btn.textContent = '⏸';
+  } else {
+    audio.pause();
+    btn.classList.remove('playing');
+    btn.textContent = '▶';
+  }
+}
+
+function onVoiceEnded(btnId) {
+  var btn = document.getElementById(btnId);
+  if (btn) { btn.classList.remove('playing'); btn.textContent = '▶'; }
+}
+
+function onVoiceLoaded(btnId, audio) {
+  // Keep wave animation static — audio just enables playback
+}
+
+function onVoiceError(btnId) {
+  var btn = document.getElementById(btnId);
+  if (btn) { btn.textContent = '⚠'; btn.style.background = '#ccc'; }
 }
 
 function escHtml(s) {
@@ -4921,6 +5114,7 @@ if ('serviceWorker' in navigator) {
   <div class="chat-login-hint" id="chat-login-hint">请先登录后再发言</div>
   <div class="chat-input-bar">
     <input class="chat-input" id="chat-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendChatMessage()" disabled>
+    <button class="chat-mic-btn" id="chat-mic-btn" onmousedown="startRecording(event)" onmouseup="stopRecording(event)" onmouseleave="stopRecording(event)" ontouchstart="startRecording(event)" ontouchend="stopRecording(event)" ontouchcancel="stopRecording(event)" disabled>🎤</button>
     <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()" disabled>➤</button>
   </div>
 </div>
