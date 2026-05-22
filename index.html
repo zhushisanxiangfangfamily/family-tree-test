@@ -1528,16 +1528,23 @@ var _lettersCache = [];
 function initGithubSync() {
   try {
     var cfg = JSON.parse(localStorage.getItem('ft_config') || '{}');
-    if (cfg.ghRepo && cfg.ghToken) {
-      _ghRepo = cfg.ghRepo;
+    var repo = getGHRepo();
+    // Set token for write access (optional)
+    if (cfg.ghToken) {
       _ghToken = cfg.ghToken;
-      _ghBranch = cfg.ghBranch || 'main';
+      _ghRepo = cfg.ghRepo || repo;
+      _ghBranch = cfg.ghBranch || 'master';
       _ghReady = true;
-      console.log('[GitHub] Sync enabled: ' + _ghRepo);
-      updateGHStatus(true);
+    } else {
+      _ghRepo = repo;
+      _ghBranch = cfg.ghBranch || 'master';
+      _ghReady = !!cfg.ghToken; // write only with token
+    }
+    if (_ghRepo) {
+      console.log('[GitHub] Repo: ' + _ghRepo + (_ghReady ? ' (read+write)' : ' (read-only)'));
+      updateGHStatus(!!cfg.ghToken);
       syncAccounts().then(function() { syncLetters(); renderAccountList(); });
     } else {
-      _ghReady = false;
       updateGHStatus(false);
     }
   } catch(e) {
