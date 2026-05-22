@@ -1935,12 +1935,12 @@ function ghApiGet(path) {
 function ghApiPut(path, content, sha, msg) {
   var body = { message: msg, content: content, branch: _ghBranch };
   if (sha) body.sha = sha;
-  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path, {
+  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path + '?ref=' + _ghBranch, {
     method: 'PUT',
     headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   }).then(function(r) {
-    if (!r.ok) throw new Error('GitHub PUT ' + path + ' returned ' + r.status);
+    if (!r.ok) throw new Error('PUT ' + path + ' HTTP ' + r.status + ' (repo=' + _ghRepo + ' branch=' + _ghBranch + ' tokenLen=' + (_ghToken ? _ghToken.length : 0) + ')');
     return r.json().then(function(data) {
       return { ok: true, status: r.status, data: data };
     });
