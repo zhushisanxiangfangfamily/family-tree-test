@@ -1520,20 +1520,18 @@ function saveData(key, val) {
 
 
 // ===== SAFE AREA (NOTCH / DYNAMIC ISLAND) =====
-(function() {
-  // Measure safe-area-inset-top — returns >0 on notched iPhones
+document.addEventListener('DOMContentLoaded', function() {
   var d = document.createElement('div');
   d.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);pointer-events:none;';
   document.body.appendChild(d);
   var inset = Math.round(d.getBoundingClientRect().height);
   document.body.removeChild(d);
   if (inset > 20) {
-    // Notched device: add extra top padding to sticky header
     var s = document.createElement('style');
     s.textContent = '.top-header{padding-top:' + (inset + 10) + 'px}';
     document.head.appendChild(s);
   }
-})();
+});
 
 // ===== GITHUB SYNC =====
 var _ghReady = false;
