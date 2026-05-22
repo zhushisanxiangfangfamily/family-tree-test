@@ -1575,9 +1575,23 @@ function initGitHubSync() {
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
 }
 
-function pollMessages() {
-  if (!_ghReady) return;
-  _ghPollCount++;
+// Wrapper: GitHub API GET via Android native bridge (preferred) or XHR fallback
+function ghApiGet(cb) {
+  if (window.Android && typeof window.Android.ghGet === 'function') {
+    var raw;
+    try { raw = Android.ghGet('data/messages.json'); } catch(e) { cb(e.message); return; }
+    var resp;
+    try { resp = JSON.parse(raw); } catch(e) { cb('parse error'); return; }
+    if (resp.ok && resp.status === 200) {
+      cb(null, resp.data);
+    } else if (resp.status === 404) {
+      cb(null, null);
+    } else {
+      cb(resp.error || ('status ' + resp.status));
+    }
+    return;
+  }
+  // XHR fallback
   var xhr = new XMLHttpRequest();
   xhr.open('GET', getMessagesUrl() + '&_=' + Date.now(), true);
   xhr.setRequestHeader('Authorization', 'token ' + ghToken());
@@ -1585,92 +1599,116 @@ function pollMessages() {
   xhr.timeout = 15000;
   xhr.onload = function() {
     if (xhr.status === 200) {
-      var data = JSON.parse(xhr.responseText);
-      _ghLastSha = data.sha;
-      var remote = [];
-      try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
-      remote.sort(function(a,b) { return a.created - b.created; });
-      _ghRemoteCount = remote.length;
-      var local = getMessagesLocal();
-      var merged = {};
-      local.forEach(function(m) { merged[m.id] = m; });
-      remote.forEach(function(m) { merged[m.id] = m; });
-      _messagesCache = Object.values(merged).sort(function(a,b) { return a.created - b.created; });
-      try { localStorage.setItem('ft_chat_messages', JSON.stringify(_messagesCache)); } catch(ex) {}
-      updateChatBadge();
-      renderChatMessages();
-      updateChatStatus();
+      try { cb(null, JSON.parse(xhr.responseText)); } catch(e) { cb(e.message); }
     } else if (xhr.status === 404) {
-      _ghRemoteCount = 0;
+      cb(null, null);
+    } else {
+      cb('HTTP ' + xhr.status);
     }
   };
-  xhr.onerror = function() {};
-  xhr.ontimeout = function() {};
+  xhr.onerror = function() { cb('network error'); };
+  xhr.ontimeout = function() { cb('timeout'); };
   xhr.send();
+}
+
+// Wrapper: GitHub API PUT via Android native bridge (preferred) or XHR fallback
+function ghApiPut(content, sha, cb) {
+  if (window.Android && typeof window.Android.ghPut === 'function') {
+    var raw;
+    try { raw = Android.ghPut('data/messages.json', content, sha || '', 'chat'); } catch(e) { cb(e.message); return; }
+    var resp;
+    try { resp = JSON.parse(raw); } catch(e) { cb('parse error'); return; }
+    if (resp.ok && (resp.status === 200 || resp.status === 201)) {
+      cb(null, resp.data);
+    } else {
+      cb(resp.error || ('status ' + resp.status));
+    }
+    return;
+  }
+  // XHR fallback
+  var xhr = new XMLHttpRequest();
+  xhr.open('PUT', getMessagesUrl() + '&_=' + Date.now(), true);
+  xhr.setRequestHeader('Authorization', 'token ' + ghToken());
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.timeout = 20000;
+  xhr.onload = function() {
+    if (xhr.status === 200 || xhr.status === 201) {
+      try { cb(null, JSON.parse(xhr.responseText)); } catch(e) { cb(e.message); }
+    } else {
+      cb('HTTP ' + xhr.status);
+    }
+  };
+  xhr.onerror = function() { cb('network error'); };
+  xhr.ontimeout = function() { cb('timeout'); };
+  xhr.send(JSON.stringify({message:'chat', content:content, sha:sha, branch:window._ghDefaults.branch}));
+}
+
+function pollMessages() {
+  if (!_ghReady) return;
+  _ghPollCount++;
+  ghApiGet(function(err, data) {
+    if (err) return;
+    if (!data) { _ghRemoteCount = 0; return; }
+    _ghLastSha = data.sha;
+    var remote = [];
+    try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
+    remote.sort(function(a,b) { return a.created - b.created; });
+    _ghRemoteCount = remote.length;
+    var local = getMessagesLocal();
+    var merged = {};
+    local.forEach(function(m) { merged[m.id] = m; });
+    remote.forEach(function(m) { merged[m.id] = m; });
+    _messagesCache = Object.values(merged).sort(function(a,b) { return a.created - b.created; });
+    try { localStorage.setItem('ft_chat_messages', JSON.stringify(_messagesCache)); } catch(ex) {}
+    updateChatBadge();
+    renderChatMessages();
+    updateChatStatus();
+  });
 }
 
 function saveMessageToGithub(msg, retryCount) {
   retryCount = retryCount || 0;
   if (retryCount === 0) showToast('⏳ 同步中...', 'info');
-  var xhrGet = new XMLHttpRequest();
-  xhrGet.open('GET', getMessagesUrl() + '&_=' + Date.now(), true);
-  xhrGet.setRequestHeader('Authorization', 'token ' + ghToken());
-  xhrGet.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhrGet.timeout = 15000;
-  xhrGet.onload = function() {
+
+  ghApiGet(function(err, data) {
+    if (err) {
+      if (retryCount < 2) {
+        setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
+      } else {
+        fallbackSaveLocal(msg);
+      }
+      return;
+    }
     var existing = [], sha = null;
-    if (xhrGet.status === 200) {
-      var d = JSON.parse(xhrGet.responseText);
-      sha = d.sha;
-      try { existing = JSON.parse(b64decode(d.content)); } catch(e) {}
+    if (data) {
+      sha = data.sha;
+      try { existing = JSON.parse(b64decode(data.content)); } catch(e) {}
     }
     if (!existing.some(function(m) { return m.id === msg.id; })) {
       existing.push(msg);
     }
     if (existing.length > 500) existing = existing.slice(-500);
     var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
-    var xhrPut = new XMLHttpRequest();
-    xhrPut.open('PUT', getMessagesUrl() + '&_=' + Date.now(), true);
-    xhrPut.setRequestHeader('Authorization', 'token ' + ghToken());
-    xhrPut.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-    xhrPut.setRequestHeader('Content-Type', 'application/json');
-    xhrPut.timeout = 20000;
-    xhrPut.onload = function() {
-      if (xhrPut.status === 200 || xhrPut.status === 201) {
-        _ghLastSha = JSON.parse(xhrPut.responseText).content.sha;
+
+    ghApiPut(content, sha, function(err2, putData) {
+      if (!err2) {
+        _ghLastSha = putData.content.sha;
         showToast('✅ 已同步', 'success');
         _messagesCache = existing;
         try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
         updateChatBadge();
         renderChatMessages();
         updateChatStatus();
-      } else if (xhrPut.status === 409 && retryCount < 3) {
+      } else if (err2 === 'status 409' && retryCount < 3) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 400);
-      } else {
-        fallbackSaveLocal(msg);
-      }
-    };
-    var putFailed = function() {
-      if (retryCount < 2) {
+      } else if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
         fallbackSaveLocal(msg);
       }
-    };
-    xhrPut.onerror = putFailed;
-    xhrPut.ontimeout = putFailed;
-    xhrPut.send(JSON.stringify({message:'chat', content:content, sha:sha, branch:window._ghDefaults.branch}));
-  };
-  var getFailed = function() {
-    if (retryCount < 2) {
-      setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
-    } else {
-      fallbackSaveLocal(msg);
-    }
-  };
-  xhrGet.onerror = getFailed;
-  xhrGet.ontimeout = getFailed;
-  xhrGet.send();
+    });
+  });
 }
 
 function fallbackSaveLocal(msg) {
@@ -1687,27 +1725,20 @@ function fallbackSaveLocal(msg) {
 function flushUnsentIfNeeded() {
   if (!_ghReady || !_ghLastSha) return;
   var local = getMessagesLocal();
-  // Check if there are messages not in cache (= unsent)
   var cacheIds = {};
   _messagesCache.forEach(function(m) { cacheIds[m.id] = true; });
   var unsent = local.filter(function(m) { return !cacheIds[m.id]; });
-  // Also check: local messages that might be unsent
   if (unsent.length === 0 && local.length > _ghRemoteCount) {
     unsent = local;
   }
   if (unsent.length === 0) return;
-  // GET latest, merge, PUT
-  var xhrGet = new XMLHttpRequest();
-  xhrGet.open('GET', getMessagesUrl() + '&_=' + Date.now(), true);
-  xhrGet.setRequestHeader('Authorization', 'token ' + ghToken());
-  xhrGet.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhrGet.timeout = 15000;
-  xhrGet.onload = function() {
+
+  ghApiGet(function(err, data) {
+    if (err) return;
     var existing = [], sha = null;
-    if (xhrGet.status === 200) {
-      var d = JSON.parse(xhrGet.responseText);
-      sha = d.sha;
-      try { existing = JSON.parse(b64decode(d.content)); } catch(e) {}
+    if (data) {
+      sha = data.sha;
+      try { existing = JSON.parse(b64decode(data.content)); } catch(e) {}
     }
     var merged = {};
     existing.forEach(function(m) { merged[m.id] = m; });
@@ -1716,27 +1747,16 @@ function flushUnsentIfNeeded() {
     if (existing.length > 500) existing = existing.slice(-500);
     if (existing.length <= _ghRemoteCount) return;
     var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
-    var xhrPut = new XMLHttpRequest();
-    xhrPut.open('PUT', getMessagesUrl() + '&_=' + Date.now(), true);
-    xhrPut.setRequestHeader('Authorization', 'token ' + ghToken());
-    xhrPut.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-    xhrPut.setRequestHeader('Content-Type', 'application/json');
-    xhrPut.timeout = 20000;
-    xhrPut.onload = function() {
-      if (xhrPut.status === 200 || xhrPut.status === 201) {
-        _ghLastSha = JSON.parse(xhrPut.responseText).content.sha;
+
+    ghApiPut(content, sha, function(err2, putData) {
+      if (!err2) {
+        _ghLastSha = putData.content.sha;
         _ghRemoteCount = existing.length;
         _messagesCache = existing;
         try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
       }
-    };
-    xhrPut.onerror = function() {};
-    xhrPut.ontimeout = function() {};
-    xhrPut.send(JSON.stringify({message:'flush', content:content, sha:sha, branch:window._ghDefaults.branch}));
-  };
-  xhrGet.onerror = function() {};
-  xhrGet.ontimeout = function() {};
-  xhrGet.send();
+    });
+  });
 }
 
 function isGHReady() { return _ghReady; }
