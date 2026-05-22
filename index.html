@@ -569,22 +569,33 @@ footer{display:none}
 .mail-btn{width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.85);font-size:1.2rem;cursor:pointer;position:relative;transition:all .2s;display:flex;align-items:center;justify-content:center}
 .mail-btn:active{transform:scale(.9)}
 .mail-badge{position:absolute;top:-4px;right:-4px;background:#c0392b;color:#fff;font-size:.6rem;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 5px}
-.mail-panel-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:9998;display:none}
-.mail-panel{position:fixed;top:0;right:0;width:360px;max-width:90vw;height:100%;background:#fff;z-index:9999;box-shadow:-4px 0 24px rgba(0,0,0,.15);transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
-.mail-panel.open{transform:translateX(0)}
-.mail-panel-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
-.mail-panel-title{font-size:1rem;font-weight:bold;color:var(--text)}
-.mail-panel-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light);padding:4px 8px}
-.mail-list{flex:1;overflow-y:auto;padding:14px}
-.mail-empty{text-align:center;color:var(--text-light);padding:40px 20px;font-size:.9rem}
-.mail-item{background:#FFFBF0;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;position:relative}
-.mail-item-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
-.mail-item-info{flex:1}
-.mail-item-subject{font-size:.85rem;font-weight:bold;color:var(--primary);margin-bottom:2px}
-.mail-item-meta{font-size:.7rem;color:var(--text-light)}
-.mail-item-msg{font-size:.85rem;color:var(--text);line-height:1.5;white-space:pre-wrap}
-.mail-item-del{position:absolute;top:8px;right:8px;background:none;border:none;color:#c0392b;cursor:pointer;font-size:.75rem;opacity:.5}
-.mail-item-del:hover{opacity:1}
+/* Chat Panel */
+.chat-panel-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:9998;display:none}
+.chat-panel{position:fixed;top:0;right:0;width:380px;max-width:92vw;height:100%;background:#fff;z-index:9999;box-shadow:-4px 0 24px rgba(0,0,0,.15);transform:translateX(100%);transition:transform .3s ease;display:flex;flex-direction:column}
+.chat-panel.open{transform:translateX(0)}
+.chat-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
+.chat-panel-title{font-size:1rem;font-weight:bold;color:var(--text)}
+.chat-panel-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light);padding:4px 8px}
+.chat-status{font-size:.65rem;color:#999;text-align:center;padding:4px 10px;border-bottom:1px dashed #f0f0f0;flex-shrink:0}
+.chat-messages{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.chat-empty{text-align:center;color:var(--text-light);padding:40px 20px;font-size:.85rem}
+.chat-msg-row{display:flex;flex-direction:column;max-width:82%}
+.chat-msg-row.own{align-self:flex-end;align-items:flex-end}
+.chat-msg-row.other{align-self:flex-start;align-items:flex-start}
+.chat-sender{font-size:.65rem;color:#999;margin-bottom:2px;padding:0 4px}
+.chat-bubble{max-width:100%;padding:10px 14px;border-radius:18px;font-size:.85rem;line-height:1.5;word-break:break-word;white-space:pre-wrap}
+.chat-bubble.own{background:#4A90D9;color:#fff;border-bottom-right-radius:4px}
+.chat-bubble.other{background:#fff;color:#333;border:1px solid #e8e8e8;border-bottom-left-radius:4px}
+.chat-time{font-size:.6rem;color:#bbb;margin-top:3px;padding:0 4px}
+.chat-input-bar{display:flex;gap:8px;padding:10px 14px;border-top:1px solid #e8e8e8;flex-shrink:0;align-items:center}
+.chat-input{flex:1;border:1px solid #ddd;border-radius:20px;padding:10px 16px;font-size:.85rem;outline:none;font-family:inherit;transition:border .2s}
+.chat-input:focus{border-color:#4A90D9}
+.chat-input:disabled{background:#f5f5f5;color:#999}
+.chat-send-btn{width:38px;height:38px;border-radius:50%;border:none;background:#4A90D9;color:#fff;font-size:1rem;cursor:pointer;flex-shrink:0;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.chat-send-btn:active{transform:scale(.9)}
+.chat-send-btn:disabled{background:#ccc;cursor:not-allowed}
+.chat-login-hint{font-size:.65rem;color:#999;text-align:center;padding:6px;flex-shrink:0}
+.chat-date-sep{text-align:center;font-size:.65rem;color:#bbb;padding:8px 0;margin:4px 0}
 
 
 /* ===== Account System ===== */
@@ -672,13 +683,6 @@ footer{display:none}
   font-size: .8rem; padding: 4px 8px; border-radius: 4px;
 }
 .account-item-del:hover { background: #fde8e8; }
-
-/* Mail sender label */
-.mail-item-from {
-  display: inline-block; font-size: .7rem; background: #e8f0fe;
-  color: #1a73e8; padding: 2px 8px; border-radius: 10px;
-  margin-top: 4px;
-}
 
 /* Sync config section */
 .firebase-config-status {
@@ -819,7 +823,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
     <button class="theme-btn" id="theme-btn" onclick="toggleThemePanel()" title="切换主题">🎨</button>
     <button class="self-badge" id="self-badge" onclick="clearSelf()" title="点击取消" style="display:none"></button>
     <button class="music-btn" id="music-btn" onclick="toggleMusic()" title="背景音乐">🎵</button>
-    <button class="mail-btn" id="mail-btn" onclick="toggleMailPanel()" title="生日信箱">📬<span class="mail-badge" id="mail-badge">0</span></button>
+    <button class="mail-btn" id="mail-btn" onclick="toggleChatPanel()" title="家族群聊">💬<span class="mail-badge" id="mail-badge">0</span></button>
 <button class="user-btn" id="user-btn" onclick="toggleLoginPanel()">👤 登录</button>
 
     <button class="admin-badge" id="admin-btn" onclick="handleAdminBtn()" style="">管理员登录</button>
@@ -1600,8 +1604,8 @@ document.addEventListener('DOMContentLoaded', function() {
 // ===== FIREBASE SYNC =====
 var _fbReady = false;
 var _db = null;
-var _lettersCache = [];
-var _unsubLetters = null;
+var _messagesCache = [];
+var _unsubMessages = null;
 
 var _firebaseConfig = {
   apiKey: "AIzaSyDbwz5GzCHCqGXWZmHJsw_dWBT-6D0Aelk",
@@ -1628,7 +1632,7 @@ function initFirebase() {
           console.warn('[Firebase] SDK load timeout or error');
           _fbReady = false;
           updateSyncStatus(false);
-          _lettersCache = getLettersLocal();
+          _messagesCache = getMessagesLocal();
         }
       }, 200);
       return;
@@ -1636,7 +1640,7 @@ function initFirebase() {
     console.warn('[Firebase] SDK not loaded');
     _fbReady = false;
     updateSyncStatus(false);
-    _lettersCache = getLettersLocal();
+    _messagesCache = getMessagesLocal();
     return;
   }
   _doInitFirebase();
@@ -1655,13 +1659,13 @@ function _doInitFirebase() {
     }
     console.log('[Firebase] Ready, starting listener...');
     updateSyncStatus(true);
-    startLettersListener();
+    startMessagesListener();
     syncAccountsFromFirestore().then(function() { renderAccountList(); });
   } catch(e) {
     console.warn('[Firebase] Init failed:', e.message);
     _fbReady = false;
     updateSyncStatus(false);
-    _lettersCache = getLettersLocal();
+    _messagesCache = getMessagesLocal();
   }
 }
 
@@ -1687,71 +1691,53 @@ function updateSyncStatus(active) {
 }
 
 var _fbSnapshotCount = 0;
-function startLettersListener() {
-  if (_unsubLetters) _unsubLetters();
+function startMessagesListener() {
+  if (_unsubMessages) _unsubMessages();
   if (!_db) return;
-  _unsubLetters = _db.collection('letters').orderBy('created', 'asc').onSnapshot(function(snapshot) {
+  _unsubMessages = _db.collection('messages').orderBy('created', 'asc').onSnapshot(function(snapshot) {
     _fbSnapshotCount++;
-    var fbLetters = [];
+    var fbMsgs = [];
     snapshot.forEach(function(doc) {
       var data = doc.data();
       data._docId = doc.id;
-      fbLetters.push(data);
+      fbMsgs.push(data);
     });
-    // If Firestore has data, use it. Otherwise keep local cache to avoid wiping.
-    if (fbLetters.length > 0 || _fbSnapshotCount <= 1) {
-      // Merge: prefer Firestore, but keep local letters not yet synced
-      if (fbLetters.length === 0) {
-        var local = getLettersLocal();
-        if (local.length > 0) {
-          _lettersCache = local;
-          try { localStorage.setItem('ft_birthday_letters', JSON.stringify(local)); } catch(ex) {}
-          updateMailBadge();
-          renderMailList();
-          return;
-        }
+    // Merge Firestore with local messages (never lose local data)
+    var localMsgs = getMessagesLocal();
+    localMsgs.forEach(function(lm) {
+      if (!fbMsgs.some(function(fm) { return fm.id === lm.id; })) {
+        fbMsgs.push(lm);
       }
-      _lettersCache = fbLetters;
-      try { localStorage.setItem('ft_birthday_letters', JSON.stringify(fbLetters)); } catch(ex) {}
-    }
-    updateMailBadge();
-    renderMailList();
+    });
+    fbMsgs.sort(function(a, b) { return a.created - b.created; });
+    _messagesCache = fbMsgs;
+    try { localStorage.setItem('ft_chat_messages', JSON.stringify(fbMsgs)); } catch(ex) {}
+    updateChatBadge();
+    renderChatMessages();
   }, function(err) {
     console.warn('[Firebase] Listener error:', err.message);
     showToast('云端监听失败: ' + err.message, 'error');
-    if (!_lettersCache.length) _lettersCache = getLettersLocal();
-    updateMailBadge();
-    renderMailList();
+    if (!_messagesCache.length) _messagesCache = getMessagesLocal();
+    updateChatBadge();
+    renderChatMessages();
   });
 }
 
-function saveLetterToFirestore(letter) {
+function saveMessageToFirestore(msg) {
   if (!_fbReady) return Promise.resolve();
-  return _db.collection('letters').add(letter).then(function() {
-    console.log('[Firebase] Write OK, letter id=' + letter.id);
-    showToast('✅ 已同步到云端', 'success');
+  return _db.collection('messages').add(msg).then(function() {
+    updateChatStatus();
   }).catch(function(e) {
     console.warn('[Firebase] Save failed:', e.message);
-    // Save locally as fallback
-    var existing = (_lettersCache && _lettersCache.length) ? _lettersCache : getLettersLocal();
-    if (!existing.some(function(l) { return l.id === letter.id; })) {
-      existing = existing.concat([letter]);
+    var existing = (_messagesCache && _messagesCache.length) ? _messagesCache : getMessagesLocal();
+    if (!existing.some(function(m) { return m.id === msg.id; })) {
+      existing = existing.concat([msg]);
     }
-    _lettersCache = existing;
-    try { localStorage.setItem('ft_birthday_letters', JSON.stringify(existing)); } catch(ex) {}
-    updateMailBadge();
-    renderMailList();
-    showToast('云端写入失败: ' + e.message, 'error');
-  });
-}
-
-function deleteLetterFromFirestore(letterId) {
-  if (!_fbReady) return;
-  var letter = _lettersCache.find(function(l) { return l.id === letterId; });
-  if (!letter || !letter._docId) return;
-  _db.collection('letters').doc(letter._docId).delete().catch(function(e) {
-    console.warn('[Firebase] Delete failed:', e.message);
-    showToast('删除失败', 'error');
+    _messagesCache = existing;
+    try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
+    updateChatBadge();
+    renderChatMessages();
+    showToast('发送失败: ' + e.message, 'error');
   });
 }
 
@@ -1945,6 +1931,7 @@ function updateUserUI() {
     btn.classList.remove('logged-in');
     btn.setAttribute('title', '家族成员登录');
   }
+  updateChatInputState();
 }
 
 function toggleLoginPanel() {
@@ -2013,9 +2000,9 @@ function selectLoginMember(id, el) {
 }
 
 // ===== SHARED LETTERS =====
-function getLettersLocal() {
+function getMessagesLocal() {
   try {
-    return JSON.parse(localStorage.getItem('ft_birthday_letters') || '[]');
+    return JSON.parse(localStorage.getItem('ft_chat_messages') || '[]');
   } catch(e) { return []; }
 }
 
@@ -4587,11 +4574,6 @@ var _bdayCurrentPerson = null;
 
 function checkBirthdays() {
   try {
-    // Firebase listener handles sync automatically; clean local only if offline
-    if (!isGHReady()) {
-      cleanOldLetters();
-    }
-
     var today = new Date();
     var todayM = today.getMonth() + 1;
     var todayD = today.getDate();
@@ -4613,7 +4595,7 @@ function checkBirthdays() {
     }
 
     // Update mail badge
-    updateMailBadge();
+    updateChatBadge();
   } catch(e) {}
 }
 
@@ -4662,160 +4644,185 @@ function closeBirthdayPopup() {
   _bdayPeople = [];
 }
 
-function sendBirthdayLetter() {
-  if (!_bdayPeople.length) return;
-  var msg = document.getElementById('bday-msg').value.trim();
-  if (!msg) { closeBirthdayPopup(); return; }
-
+// ===== CHAT =====
+function sendChatMessage() {
   var user = getCurrentUser();
-  var fromMemberId = user ? user.memberId : 0;
-  var fromMemberName = user ? user.memberName : '匿名';
-
-  // Save a letter for each birthday person
-  for (var i = 0; i < _bdayPeople.length; i++) {
-    var p = _bdayPeople[i];
-    var bd = parseBirthDate(p.birth);
-    var age = bd.year ? (new Date().getFullYear() - parseInt(bd.year)) : '?';
-    var letter = {
-      id: Date.now() + i,
-      fromMemberId: fromMemberId,
-      fromMemberName: fromMemberName,
-      toMemberId: p.id,
-      toMemberName: p.name,
-      age: age,
-      message: msg,
-      created: Date.now()
-    };
-
-    // Always save locally first (safety net)
-    var letters = getLetters();
-    letters.push(letter);
-    saveLetters(letters);
-    // Also try Firebase sync
-    if (isGHReady()) {
-      saveLetterToFirestore(letter);
-    }
+  if (!user) {
+    showToast('请先登录后再发言', 'warning');
+    toggleLoginPanel();
+    return;
   }
+  var input = document.getElementById('chat-input');
+  var text = input.value.trim();
+  if (!text) return;
 
-  closeBirthdayPopup();
-  updateMailBadge();
+  var msg = {
+    id: Date.now(),
+    fromMemberId: user.memberId,
+    fromMemberName: user.memberName,
+    text: text,
+    created: Date.now()
+  };
+
+  // Always save locally first
+  var msgs = getMessages();
+  msgs.push(msg);
+  saveMessages(msgs);
+  _messagesCache = msgs;
+  // Clear input
+  input.value = '';
+  updateChatBadge();
+  renderChatMessages();
+  scrollChatToBottom();
+  // Sync to Firestore
+  if (isGHReady()) {
+    saveMessageToFirestore(msg);
+  }
 }
 
-function getLetters() {
+function getMessages() {
   var local = [];
-  try { local = JSON.parse(localStorage.getItem('ft_birthday_letters') || '[]'); } catch(e) {}
+  try { local = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]'); } catch(e) {}
   if (isGHReady()) {
-    // Merge: Firestore cache + any local letters not yet in cache
-    var result = _lettersCache.slice();
+    var result = _messagesCache.slice();
     local.forEach(function(ll) {
       if (!result.some(function(rl) { return rl.id === ll.id; })) {
         result.push(ll);
       }
     });
-    result.sort(function(a, b) { return b.created - a.created; });
+    result.sort(function(a, b) { return a.created - b.created; });
     return result;
   }
   return local;
 }
 
-function saveLetters(letters) {
-  try {
-    localStorage.setItem('ft_birthday_letters', JSON.stringify(letters));
-  } catch(e) {}
+function saveMessages(msgs) {
+  try { localStorage.setItem('ft_chat_messages', JSON.stringify(msgs)); } catch(e) {}
 }
 
-function cleanOldLetters() {
-  if (isGHReady()) return; // GitHub: no auto-clean
-  var letters = getLetters();
-  var cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000; // 3 days
-  var filtered = letters.filter(function(l) { return l.created > cutoff; });
-  if (filtered.length !== letters.length) saveLetters(filtered);
-}
-
-function updateMailBadge() {
-  var letters = getLetters();
+function updateChatBadge() {
+  var msgs = getMessages();
   var badge = document.getElementById('mail-badge');
   if (!badge) return;
-  var count = letters.length;
+  var count = msgs.length;
   badge.textContent = count > 99 ? '99+' : count;
   badge.style.display = count > 0 ? 'flex' : 'none';
 }
 
-function toggleMailPanel() {
-  var panel = document.getElementById('mail-panel');
-  var overlay = document.getElementById('mail-panel-overlay');
-  if (panel.classList.contains('open')) {
-    closeMailPanel();
+function updateChatStatus() {
+  var el = document.getElementById('chat-status');
+  if (!el) return;
+  if (isGHReady()) {
+    el.textContent = '🟢 实时连接 · ' + _messagesCache.length + ' 条消息';
   } else {
-    renderMailList();
+    el.textContent = '⚡ 本地模式';
+  }
+}
+
+function updateChatInputState() {
+  var user = getCurrentUser();
+  var input = document.getElementById('chat-input');
+  var btn = document.getElementById('chat-send-btn');
+  var hint = document.getElementById('chat-login-hint');
+  if (user) {
+    if (input) { input.disabled = false; input.placeholder = '输入消息...'; }
+    if (btn) btn.disabled = false;
+    if (hint) hint.style.display = 'none';
+  } else {
+    if (input) { input.disabled = true; input.placeholder = '请先登录后再发言'; }
+    if (btn) btn.disabled = true;
+    if (hint) hint.style.display = 'block';
+  }
+}
+
+function toggleChatPanel() {
+  var panel = document.getElementById('chat-panel');
+  var overlay = document.getElementById('chat-panel-overlay');
+  if (!panel) return;
+  if (panel.classList.contains('open')) {
+    closeChatPanel();
+  } else {
+    updateChatInputState();
+    updateChatStatus();
+    renderChatMessages();
     panel.classList.add('open');
     overlay.style.display = 'block';
+    setTimeout(scrollChatToBottom, 200);
   }
 }
 
-function closeMailPanel() {
-  document.getElementById('mail-panel').classList.remove('open');
-  document.getElementById('mail-panel-overlay').style.display = 'none';
+function closeChatPanel() {
+  var panel = document.getElementById('chat-panel');
+  var overlay = document.getElementById('chat-panel-overlay');
+  if (panel) panel.classList.remove('open');
+  if (overlay) overlay.style.display = 'none';
 }
 
-function renderMailList() {
-  var list = document.getElementById('mail-list');
-  var letters = getLetters();
+function renderChatMessages() {
+  var container = document.getElementById('chat-messages');
+  if (!container) return;
+  var msgs = getMessages();
+  var user = getCurrentUser();
+  var myId = user ? user.memberId : -1;
 
-  var emptyMsg = isGHReady()
-    ? '<div class="mail-empty">📭 暂无生日信件<br><span style="font-size:.75rem;color:var(--text-light)">祝福信件云端共享，永久保存</span></div>'
-    : '<div class="mail-empty">📭 暂无生日信件<br><span style="font-size:.75rem;color:var(--text-light)">信件保存3天后自动清除</span></div>';
+  updateChatStatus();
 
-  // Debug info line
-  var debugHTML = '';
-  if (isGHReady()) {
-    debugHTML = '<div style="font-size:.7rem;color:#999;text-align:center;padding:4px 0;border-bottom:1px dashed #eee;margin-bottom:6px">' +
-      '🟢 云端 ' + _lettersCache.length + ' 封 · 本地 ' + (function(){try{return JSON.parse(localStorage.getItem('ft_birthday_letters')||'[]').length}catch(e){return'?'}})() + ' 封 · 快照 #' + _fbSnapshotCount +
-      '</div>';
-  }
-
-  if (letters.length === 0) {
-    list.innerHTML = debugHTML + emptyMsg;
+  if (msgs.length === 0) {
+    container.innerHTML = '<div class="chat-empty">暂无消息，快来聊天吧 💬</div>';
     return;
   }
 
-  // Sort newest first
-  letters.sort(function(a, b) { return b.created - a.created; });
+  // Sort oldest first (chat style)
+  msgs.sort(function(a, b) { return a.created - b.created; });
 
-  var ghReady = isGHReady();
-  list.innerHTML = debugHTML + letters.map(function(l, idx) {
-    var d = new Date(l.created);
+  var lastDate = '';
+  container.innerHTML = msgs.map(function(m) {
+    var d = new Date(m.created);
+    var timeStr = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
     var dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    var fromHTML = l.fromMemberId && l.fromMemberId !== 0
-      ? '<div class="mail-item-from">✉ ' + escHtml(l.fromMemberName) + ' 发送</div>'
-      : '<div class="mail-item-from" style="background:#f5f5f5;color:#999">匿名祝福</div>';
-    var delBtn = ghReady
-      ? '<button class="mail-item-del" onclick="deleteLetterFromFirestore(' + l.id + ')" title="删除">✕</button>'
-      : '<button class="mail-item-del" onclick="deleteLetter(' + l.id + ')" title="删除">✕</button>';
-    return '<div class="mail-item">' +
-      delBtn +
-      '<div class="mail-item-top">' +
-        '<div class="mail-item-info">' +
-          '<div class="mail-item-subject">🎂 祝 ' + l.toMemberName + ' ' + l.age + '岁生日快乐</div>' +
-          '<div class="mail-item-meta">' + dateStr + '</div>' +
-        '</div>' +
-      '</div>' +
-      fromHTML +
-      '<div class="mail-item-msg">' + escHtml(l.message) + '</div>' +
-    '</div>';
+    var dateSep = '';
+    if (dateStr !== lastDate) {
+      dateSep = '<div class="chat-date-sep">' + dateStr + '</div>';
+      lastDate = dateStr;
+    }
+    var isOwn = m.fromMemberId === myId;
+    var rowClass = isOwn ? 'chat-msg-row own' : 'chat-msg-row other';
+    var bubbleClass = isOwn ? 'chat-bubble own' : 'chat-bubble other';
+    var senderName = isOwn ? '' : m.fromMemberName || '匿名';
+    var senderHTML = senderName ? '<div class="chat-sender">' + escHtml(senderName) + '</div>' : '';
+    return dateSep +
+      '<div class="' + rowClass + '">' +
+      senderHTML +
+      '<div class="' + bubbleClass + '">' + escHtml(m.text) + '</div>' +
+      '<div class="chat-time">' + timeStr + '</div>' +
+      '</div>';
   }).join('');
+
+  // Scroll to bottom after render
+  setTimeout(scrollChatToBottom, 100);
 }
 
-function deleteLetter(id) {
-  var letters = getLetters().filter(function(l) { return l.id !== id; });
-  saveLetters(letters);
-  renderMailList();
-  updateMailBadge();
-  if (letters.length === 0) closeMailPanel();
+function scrollChatToBottom() {
+  var container = document.getElementById('chat-messages');
+  if (container) {
+    container.scrollTop = container.scrollHeight;
+  }
 }
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Keep sendBirthdayLetter for backward compat (birthday popup uses it)
+function sendBirthdayLetter() {
+  // Reuse chat send if the birthday popup is open
+  var msg = document.getElementById('bday-msg');
+  if (msg && msg.value.trim()) {
+    document.getElementById('chat-input').value = '🎂 ' + msg.value.trim();
+    msg.value = '';
+    closeBirthdayPopup();
+    toggleChatPanel();
+  }
 }
 
 </script>
@@ -4838,13 +4845,21 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 </div>
-<div class="mail-panel-overlay" id="mail-panel-overlay" onclick="closeMailPanel()"></div>
-<div class="mail-panel" id="mail-panel">
-  <div class="mail-panel-header">
-    <span class="mail-panel-title">📬 生日信箱</span>
-    <button class="mail-panel-close" onclick="closeMailPanel()">✕</button>
+<div class="chat-panel-overlay" id="chat-panel-overlay" onclick="closeChatPanel()"></div>
+<div class="chat-panel" id="chat-panel">
+  <div class="chat-panel-header">
+    <span class="chat-panel-title">💬 家族群聊</span>
+    <button class="chat-panel-close" onclick="closeChatPanel()">✕</button>
   </div>
-  <div class="mail-list" id="mail-list"></div>
+  <div class="chat-status" id="chat-status"></div>
+  <div class="chat-messages" id="chat-messages">
+    <div class="chat-empty">暂无消息，快来聊天吧</div>
+  </div>
+  <div class="chat-login-hint" id="chat-login-hint">请先登录后再发言</div>
+  <div class="chat-input-bar">
+    <input class="chat-input" id="chat-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendChatMessage()" disabled>
+    <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()" disabled>➤</button>
+  </div>
 </div>
 
 
