@@ -1922,47 +1922,29 @@ function syncLetters() {
 }
 
 function ghApiGet(path) {
-  return new Promise(function(resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', 'https://api.github.com/repos/' + _ghRepo + '/contents/' + path + '?ref=' + _ghBranch, true);
-    xhr.setRequestHeader('Authorization', 'token ' + _ghToken);
-    xhr.timeout = 15000;
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        try { resolve({ ok: true, status: 200, data: JSON.parse(xhr.responseText) }); }
-        catch(e) { reject(new Error('JSON parse error')); }
-      } else if (xhr.status === 404) {
-        resolve({ ok: false, status: 404, data: null });
-      } else {
-        reject(new Error('GitHub GET ' + path + ' returned ' + xhr.status));
-      }
-    };
-    xhr.onerror = function() { reject(new Error('Network error')); };
-    xhr.ontimeout = function() { reject(new Error('Timeout')); };
-    xhr.send();
+  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path + '?ref=' + _ghBranch, {
+    headers: { 'Authorization': 'token ' + _ghToken }
+  }).then(function(r) {
+    if (r.status === 404) return { ok: false, status: 404, data: null };
+    if (!r.ok) throw new Error('GitHub GET ' + path + ' returned ' + r.status);
+    return r.json().then(function(data) {
+      return { ok: true, status: 200, data: data };
+    });
   });
 }
 
 function ghApiPut(path, content, sha, msg) {
-  return new Promise(function(resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('PUT', 'https://api.github.com/repos/' + _ghRepo + '/contents/' + path, true);
-    xhr.setRequestHeader('Authorization', 'token ' + _ghToken);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.timeout = 15000;
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try { resolve({ ok: true, status: xhr.status, data: JSON.parse(xhr.responseText) }); }
-        catch(e) { resolve({ ok: true, status: xhr.status, data: null }); }
-      } else {
-        reject(new Error('GitHub PUT ' + path + ' returned ' + xhr.status + ': ' + (xhr.responseText || '').substring(0, 100)));
-      }
-    };
-    xhr.onerror = function() { reject(new Error('Network error')); };
-    xhr.ontimeout = function() { reject(new Error('Timeout')); };
-    var body = { message: msg, content: content, branch: _ghBranch };
-    if (sha) body.sha = sha;
-    xhr.send(JSON.stringify(body));
+  var body = { message: msg, content: content, branch: _ghBranch };
+  if (sha) body.sha = sha;
+  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path, {
+    method: 'PUT',
+    headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(function(r) {
+    if (!r.ok) throw new Error('GitHub PUT ' + path + ' returned ' + r.status);
+    return r.json().then(function(data) {
+      return { ok: true, status: r.status, data: data };
+    });
   });
 }
 
