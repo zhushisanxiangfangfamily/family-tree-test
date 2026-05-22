@@ -1935,7 +1935,7 @@ function ghApiGet(path) {
 function ghApiPut(path, content, sha, msg) {
   var body = { message: msg, content: content, branch: _ghBranch };
   if (sha) body.sha = sha;
-  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path + '?ref=' + _ghBranch, {
+  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path, {
     method: 'PUT',
     headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -1950,10 +1950,16 @@ function ghApiPut(path, content, sha, msg) {
 function saveLetterToGithub(letter) {
   if (!isGHReady()) return Promise.resolve();
   var newContent = btoa(unescape(encodeURIComponent(JSON.stringify([letter], null, 2))));
+  var apiBase = 'https://api.github.com/repos/' + _ghRepo + '/contents/letters.json';
 
   return ghApiGet('letters.json').then(function(res) {
     if (res.status === 404) {
-      return ghApiPut('letters.json', newContent, null, 'Create letters.json');
+      // Create new file (no SHA needed)
+      return fetch(apiBase, {
+        method: 'PUT',
+        headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Create letters.json', content: newContent, branch: _ghBranch })
+      });
     }
     if (!res.ok) throw new Error('Failed to fetch letters.json: ' + res.status);
     var currentLetters = [];
@@ -1964,7 +1970,12 @@ function saveLetterToGithub(letter) {
     currentLetters.push(letter);
     if (currentLetters.length > 200) currentLetters = currentLetters.slice(-200);
     var updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(currentLetters, null, 2))));
-    return ghApiPut('letters.json', updatedContent, res.data.sha, 'Birthday letter for ' + letter.toMemberName);
+    // Update existing file (with SHA)
+    return fetch(apiBase, {
+      method: 'PUT',
+      headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Birthday letter for ' + letter.toMemberName, content: updatedContent, sha: res.data.sha, branch: _ghBranch })
+    });
   }).then(function(r) {
     if (r && !r.ok) throw new Error('Failed to update letters.json: ' + r.status);
     return syncLetters();
