@@ -1651,7 +1651,6 @@ function initFirebase() {
 function _doInitFirebase() {
   try {
     if (firebase.apps && firebase.apps.length) {
-      // Already initialized
       _db = firebase.firestore();
       _fbReady = true;
     } else {
@@ -1661,12 +1660,14 @@ function _doInitFirebase() {
     }
     console.log('[Firebase] Ready, starting listener...');
     updateSyncStatus(true);
+    showToast('✅ 云端已连接', 'success');
     startMessagesListener();
     syncAccountsFromFirestore().then(function() { renderAccountList(); });
   } catch(e) {
     console.warn('[Firebase] Init failed:', e.message);
     _fbReady = false;
     updateSyncStatus(false);
+    showToast('❌ 云端连接失败: ' + e.message, 'error');
     _messagesCache = getMessagesLocal();
   }
 }
@@ -4701,6 +4702,8 @@ function sendChatMessage() {
   // Sync to Firestore
   if (isGHReady()) {
     saveMessageToFirestore(msg);
+  } else {
+    showToast('⚠️ 云端未连接，仅本地保存', 'warning');
   }
 }
 
