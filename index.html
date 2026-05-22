@@ -1686,17 +1686,34 @@ function updateSyncStatus(active) {
   }
 }
 
+var _fbSnapshotCount = 0;
 function startLettersListener() {
   if (_unsubLetters) _unsubLetters();
   if (!_db) return;
   _unsubLetters = _db.collection('letters').orderBy('created', 'asc').onSnapshot(function(snapshot) {
-    _lettersCache = [];
+    _fbSnapshotCount++;
+    var fbLetters = [];
     snapshot.forEach(function(doc) {
       var data = doc.data();
       data._docId = doc.id;
-      _lettersCache.push(data);
+      fbLetters.push(data);
     });
-    try { localStorage.setItem('ft_birthday_letters', JSON.stringify(_lettersCache)); } catch(ex) {}
+    // If Firestore has data, use it. Otherwise keep local cache to avoid wiping.
+    if (fbLetters.length > 0 || _fbSnapshotCount <= 1) {
+      // Merge: prefer Firestore, but keep local letters not yet synced
+      if (fbLetters.length === 0) {
+        var local = getLettersLocal();
+        if (local.length > 0) {
+          _lettersCache = local;
+          try { localStorage.setItem('ft_birthday_letters', JSON.stringify(local)); } catch(ex) {}
+          updateMailBadge();
+          renderMailList();
+          return;
+        }
+      }
+      _lettersCache = fbLetters;
+      try { localStorage.setItem('ft_birthday_letters', JSON.stringify(fbLetters)); } catch(ex) {}
+    }
     updateMailBadge();
     renderMailList();
   }, function(err) {
@@ -1710,8 +1727,12 @@ function startLettersListener() {
 
 function saveLetterToFirestore(letter) {
   if (!_fbReady) return Promise.resolve();
-  return _db.collection('letters').add(letter).catch(function(e) {
+  return _db.collection('letters').add(letter).then(function() {
+    console.log('[Firebase] Write OK, letter id=' + letter.id);
+    showToast('✅ 已同步到云端', 'success');
+  }).catch(function(e) {
     console.warn('[Firebase] Save failed:', e.message);
+    // Save locally as fallback
     var existing = (_lettersCache && _lettersCache.length) ? _lettersCache : getLettersLocal();
     if (!existing.some(function(l) { return l.id === letter.id; })) {
       existing = existing.concat([letter]);
@@ -4666,12 +4687,13 @@ function sendBirthdayLetter() {
       created: Date.now()
     };
 
+    // Always save locally first (safety net)
+    var letters = getLetters();
+    letters.push(letter);
+    saveLetters(letters);
+    // Also try Firebase sync
     if (isGHReady()) {
       saveLetterToFirestore(letter);
-    } else {
-      var letters = getLetters();
-      letters.push(letter);
-      saveLetters(letters);
     }
   }
 
@@ -4680,16 +4702,23 @@ function sendBirthdayLetter() {
 }
 
 function getLetters() {
+  var local = [];
+  try { local = JSON.parse(localStorage.getItem('ft_birthday_letters') || '[]'); } catch(e) {}
   if (isGHReady()) {
-    return _lettersCache;
+    // Merge: Firestore cache + any local letters not yet in cache
+    var result = _lettersCache.slice();
+    local.forEach(function(ll) {
+      if (!result.some(function(rl) { return rl.id === ll.id; })) {
+        result.push(ll);
+      }
+    });
+    result.sort(function(a, b) { return b.created - a.created; });
+    return result;
   }
-  try {
-    return JSON.parse(localStorage.getItem('ft_birthday_letters') || '[]');
-  } catch(e) { return []; }
+  return local;
 }
 
 function saveLetters(letters) {
-  if (isGHReady()) return; // GitHub handles persistence
   try {
     localStorage.setItem('ft_birthday_letters', JSON.stringify(letters));
   } catch(e) {}
@@ -4737,8 +4766,16 @@ function renderMailList() {
     ? '<div class="mail-empty">📭 暂无生日信件<br><span style="font-size:.75rem;color:var(--text-light)">祝福信件云端共享，永久保存</span></div>'
     : '<div class="mail-empty">📭 暂无生日信件<br><span style="font-size:.75rem;color:var(--text-light)">信件保存3天后自动清除</span></div>';
 
+  // Debug info line
+  var debugHTML = '';
+  if (isGHReady()) {
+    debugHTML = '<div style="font-size:.7rem;color:#999;text-align:center;padding:4px 0;border-bottom:1px dashed #eee;margin-bottom:6px">' +
+      '🟢 云端 ' + _lettersCache.length + ' 封 · 本地 ' + (function(){try{return JSON.parse(localStorage.getItem('ft_birthday_letters')||'[]').length}catch(e){return'?'}})() + ' 封 · 快照 #' + _fbSnapshotCount +
+      '</div>';
+  }
+
   if (letters.length === 0) {
-    list.innerHTML = emptyMsg;
+    list.innerHTML = debugHTML + emptyMsg;
     return;
   }
 
@@ -4746,7 +4783,7 @@ function renderMailList() {
   letters.sort(function(a, b) { return b.created - a.created; });
 
   var ghReady = isGHReady();
-  list.innerHTML = letters.map(function(l, idx) {
+  list.innerHTML = debugHTML + letters.map(function(l, idx) {
     var d = new Date(l.created);
     var dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     var fromHTML = l.fromMemberId && l.fromMemberId !== 0
