@@ -1596,15 +1596,37 @@ function syncAccounts() {
     return Promise.resolve();
   }
   var url = 'https://' + repo.replace('/', '.github.io/') + '/accounts.json';
-  return fetch(url).then(function(r) {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  }).then(function(data) {
-    _accountsCache = data || [];
-    saveAccountsLocal(_accountsCache);
-  }).catch(function(e) {
-    console.warn('[GitHub] syncAccounts failed:', e.message);
-    _accountsCache = [];
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.timeout = 8000;
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          _accountsCache = JSON.parse(xhr.responseText) || [];
+          saveAccountsLocal(_accountsCache);
+          console.log('[GitHub] Accounts synced: ' + _accountsCache.length);
+        } catch(e) {
+          console.warn('[GitHub] Parse error:', e.message);
+          _accountsCache = [];
+        }
+      } else {
+        console.warn('[GitHub] syncAccounts HTTP ' + xhr.status);
+        _accountsCache = [];
+      }
+      resolve();
+    };
+    xhr.onerror = function() {
+      console.warn('[GitHub] syncAccounts XHR error');
+      _accountsCache = [];
+      resolve();
+    };
+    xhr.ontimeout = function() {
+      console.warn('[GitHub] syncAccounts timeout');
+      _accountsCache = [];
+      resolve();
+    };
+    xhr.send();
   });
 }
 
@@ -1867,16 +1889,35 @@ function syncLetters() {
     return Promise.resolve();
   }
   var url = 'https://' + repo.replace('/', '.github.io/') + '/letters.json';
-  return fetch(url).then(function(r) {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  }).then(function(data) {
-    _lettersCache = data || [];
-    updateMailBadge();
-  }).catch(function(e) {
-    console.warn('[GitHub] syncLetters failed:', e.message);
-    _lettersCache = getLettersLocal();
-    updateMailBadge();
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.timeout = 8000;
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          _lettersCache = JSON.parse(xhr.responseText) || [];
+          console.log('[GitHub] Letters synced: ' + _lettersCache.length);
+        } catch(e) {
+          _lettersCache = getLettersLocal();
+        }
+      } else {
+        _lettersCache = getLettersLocal();
+      }
+      updateMailBadge();
+      resolve();
+    };
+    xhr.onerror = function() {
+      _lettersCache = getLettersLocal();
+      updateMailBadge();
+      resolve();
+    };
+    xhr.ontimeout = function() {
+      _lettersCache = getLettersLocal();
+      updateMailBadge();
+      resolve();
+    };
+    xhr.send();
   });
 }
 
