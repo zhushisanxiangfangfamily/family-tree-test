@@ -1571,7 +1571,7 @@ function initGitHubSync() {
   // Async native bridge — fast polling won't block UI
   setTimeout(function() {
     pollMessages();
-    _ghPollTimer = setInterval(pollMessages, 5000);
+    _ghPollTimer = setInterval(pollMessages, 3000);
   }, 1500);
   // Background flush for unsent messages every 30s
   setInterval(flushUnsentIfNeeded, 30000);
