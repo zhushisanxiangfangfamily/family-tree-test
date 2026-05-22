@@ -1583,18 +1583,17 @@ function saveAccountsLocal(accounts) {
 }
 
 function syncAccounts() {
-  if (!isGHReady()) {
+  var repo = getGHRepo();
+  if (!repo) {
     _accountsCache = [];
-    updateMailBadge();
     return Promise.resolve();
   }
-  var url = 'https://' + _ghRepo.replace('/', '.github.io/') + '/accounts.json';
+  var url = 'https://' + repo.replace('/', '.github.io/') + '/accounts.json';
   return fetch(url).then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
   }).then(function(data) {
     _accountsCache = data || [];
-    // Also save locally for offline
     saveAccountsLocal(_accountsCache);
   }).catch(function(e) {
     console.warn('[GitHub] syncAccounts failed:', e.message);
@@ -1842,13 +1841,13 @@ function getLettersLocal() {
 }
 
 function syncLetters() {
-  if (!isGHReady()) {
+  var repo = getGHRepo();
+  if (!repo) {
     _lettersCache = getLettersLocal();
     updateMailBadge();
     return Promise.resolve();
   }
-  // Fetch letters.json from GitHub Pages
-  var url = 'https://' + _ghRepo.replace('/', '.github.io/') + '/letters.json';
+  var url = 'https://' + repo.replace('/', '.github.io/') + '/letters.json';
   return fetch(url).then(function(r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     return r.json();
