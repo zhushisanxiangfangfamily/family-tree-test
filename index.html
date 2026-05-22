@@ -1922,9 +1922,8 @@ function syncLetters() {
 }
 
 function ghApiGet(path) {
-  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path + '?ref=' + _ghBranch, {
-    headers: { 'Authorization': 'token ' + _ghToken }
-  }).then(function(r) {
+  // No auth needed for public repos — avoids CORS preflight
+  return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path + '?ref=' + _ghBranch).then(function(r) {
     if (r.status === 404) return { ok: false, status: 404, data: null };
     if (!r.ok) throw new Error('GitHub GET ' + path + ' returned ' + r.status);
     return r.json().then(function(data) {
@@ -1974,7 +1973,10 @@ function saveLetterToGithub(letter) {
     var letters = getLettersLocal();
     letters.push(letter);
     try { localStorage.setItem('ft_birthday_letters', JSON.stringify(letters)); } catch(ex) {}
-    showToast('云端同步失败，已保存到本地', 'error');
+    _lettersCache = letters;
+    updateMailBadge();
+    renderMailList();
+    showToast('已保存到本地' + (e.message ? ' (' + e.message + ')' : ''), 'warning');
   });
 }
 
