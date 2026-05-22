@@ -1554,9 +1554,14 @@ function ghToken() {
   return (d.p1||'') + (d.p2||'') + (d.tk1||'') + (d.tk2||'');
 }
 
+function b64decode(str) {
+  // Reverse of btoa(unescape(encodeURIComponent(...))) for Unicode support
+  return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
+}
+
 function getMessagesUrl() {
   var d = window._ghDefaults;
-  return 'https://api.github.com/repos/' + d.repo + '/contents/data/messages.json?ref=' + d.branch;
+  return 'https://api.github.com/repos/' + d.repo + '/contents/data/messages.json?ref=' + d.branch + '&_t=' + Date.now();
 }
 
 function initGitHubSync() {
@@ -1582,7 +1587,7 @@ function pollMessages() {
       var data = JSON.parse(xhr.responseText);
       _ghLastSha = data.sha;
       var remote = [];
-      try { remote = JSON.parse(atob(data.content.replace(/\s/g, ''))); } catch(e) {}
+      try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
       remote.sort(function(a,b) { return a.created - b.created; });
       _ghRemoteCount = remote.length;
       var local = [];
@@ -1616,7 +1621,7 @@ function saveMessageToGithub(msg) {
     if (xhrGet.status === 200) {
       var data = JSON.parse(xhrGet.responseText);
       sha = data.sha;
-      try { existing = JSON.parse(atob(data.content.replace(/\s/g, ''))); } catch(e) {}
+      try { existing = JSON.parse(b64decode(data.content)); } catch(e) {}
     }
     existing.push(msg);
     if (existing.length > 500) existing = existing.slice(-500);
