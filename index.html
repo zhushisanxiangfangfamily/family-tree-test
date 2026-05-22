@@ -1930,7 +1930,17 @@ function syncLetters() {
 }
 
 function ghApiGet(path) {
-  // No auth needed for public repos — avoids CORS preflight
+  // Use native Android HTTP (no CORS restrictions) when inside the app
+  if (window.Android && window.Android.ghGet) {
+    return new Promise(function(resolve) {
+      try {
+        var result = JSON.parse(window.Android.ghGet(path));
+        resolve(result);
+      } catch(e) {
+        resolve({ ok: false, status: 0, error: e.message });
+      }
+    });
+  }
   return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path + '?ref=' + _ghBranch).then(function(r) {
     if (r.status === 404) return { ok: false, status: 404, data: null };
     if (!r.ok) throw new Error('GitHub GET ' + path + ' returned ' + r.status);
@@ -1941,6 +1951,17 @@ function ghApiGet(path) {
 }
 
 function ghApiPut(path, content, sha, msg) {
+  // Use native Android HTTP (no CORS restrictions) when inside the app
+  if (window.Android && window.Android.ghPut) {
+    return new Promise(function(resolve) {
+      try {
+        var result = JSON.parse(window.Android.ghPut(path, content, sha || '', msg));
+        resolve(result);
+      } catch(e) {
+        resolve({ ok: false, status: 0, error: e.message });
+      }
+    });
+  }
   var body = { message: msg, content: content, branch: _ghBranch };
   if (sha) body.sha = sha;
   return fetch('https://api.github.com/repos/' + _ghRepo + '/contents/' + path, {
@@ -1958,21 +1979,16 @@ function ghApiPut(path, content, sha, msg) {
 function saveLetterToGithub(letter) {
   if (!isGHReady()) return Promise.resolve();
   var newContent = btoa(unescape(encodeURIComponent(JSON.stringify([letter], null, 2))));
-  var apiBase = 'https://api.github.com/repos/' + _ghRepo + '/contents/letters.json';
   var mergedLetters = null; // Will hold the full merged list after successful PUT
 
   return ghApiGet('letters.json').then(function(res) {
     if (res.status === 404) {
-      return fetch(apiBase, {
-        method: 'PUT',
-        headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: 'Create letters.json', content: newContent, branch: _ghBranch })
-      }).then(function(r) {
-        if (!r.ok) throw new Error('Create failed: ' + r.status);
+      return ghApiPut('letters.json', newContent, '', 'Create letters.json').then(function(r) {
+        if (!r.ok) throw new Error('Create failed: ' + (r.status || r.error));
         mergedLetters = [letter];
       });
     }
-    if (!res.ok) throw new Error('Failed to fetch letters.json: ' + res.status);
+    if (!res.ok) throw new Error('Failed to fetch letters.json: ' + (res.status || res.error));
     var currentLetters = [];
     try {
       var decoded = decodeURIComponent(escape(atob(res.data.content.replace(/\s/g, ''))));
@@ -1982,12 +1998,8 @@ function saveLetterToGithub(letter) {
     if (currentLetters.length > 200) currentLetters = currentLetters.slice(-200);
     mergedLetters = currentLetters;
     var updatedContent = btoa(unescape(encodeURIComponent(JSON.stringify(currentLetters, null, 2))));
-    return fetch(apiBase, {
-      method: 'PUT',
-      headers: { 'Authorization': 'token ' + _ghToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Birthday letter for ' + letter.toMemberName, content: updatedContent, sha: res.data.sha, branch: _ghBranch })
-    }).then(function(r) {
-      if (!r.ok) throw new Error('Update failed: ' + r.status);
+    return ghApiPut('letters.json', updatedContent, res.data.sha, 'Birthday letter for ' + letter.toMemberName).then(function(r) {
+      if (!r.ok) throw new Error('Update failed: ' + (r.status || r.error));
     });
   }).then(function() {
     // Use the merged data we just PUT — avoids stale GitHub Pages read
