@@ -1691,6 +1691,7 @@ function updateSyncStatus(active) {
 }
 
 var _fbSnapshotCount = 0;
+var _fbRemoteCount = 0;
 function startMessagesListener() {
   if (_unsubMessages) _unsubMessages();
   if (!_db) return;
@@ -1702,11 +1703,14 @@ function startMessagesListener() {
       data._docId = doc.id;
       fbMsgs.push(data);
     });
-    // Merge Firestore with local messages (never lose local data)
+    _fbRemoteCount = fbMsgs.length;
+    // Merge with local messages
     var localMsgs = getMessagesLocal();
+    var localOnly = 0;
     localMsgs.forEach(function(lm) {
       if (!fbMsgs.some(function(fm) { return fm.id === lm.id; })) {
         fbMsgs.push(lm);
+        localOnly++;
       }
     });
     fbMsgs.sort(function(a, b) { return a.created - b.created; });
@@ -1716,7 +1720,7 @@ function startMessagesListener() {
     renderChatMessages();
   }, function(err) {
     console.warn('[Firebase] Listener error:', err.message);
-    showToast('云端监听失败: ' + err.message, 'error');
+    showToast('云端错误: ' + err.message, 'error');
     if (!_messagesCache.length) _messagesCache = getMessagesLocal();
     updateChatBadge();
     renderChatMessages();
@@ -1725,10 +1729,13 @@ function startMessagesListener() {
 
 function saveMessageToFirestore(msg) {
   if (!_fbReady) return Promise.resolve();
-  return _db.collection('messages').add(msg).then(function() {
+  return _db.collection('messages').add(msg).then(function(docRef) {
+    console.log('[Firebase] Write OK, docId=' + docRef.id);
+    showToast('✅ 已同步', 'success');
     updateChatStatus();
   }).catch(function(e) {
     console.warn('[Firebase] Save failed:', e.message);
+    showToast('❌ 同步失败: ' + e.message, 'error');
     var existing = (_messagesCache && _messagesCache.length) ? _messagesCache : getMessagesLocal();
     if (!existing.some(function(m) { return m.id === msg.id; })) {
       existing = existing.concat([msg]);
@@ -1737,7 +1744,6 @@ function saveMessageToFirestore(msg) {
     try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
     updateChatBadge();
     renderChatMessages();
-    showToast('发送失败: ' + e.message, 'error');
   });
 }
 
@@ -4713,7 +4719,9 @@ function updateChatStatus() {
   var el = document.getElementById('chat-status');
   if (!el) return;
   if (isGHReady()) {
-    el.textContent = '🟢 实时连接 · ' + _messagesCache.length + ' 条消息';
+    var localCount = 0;
+    try { localCount = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]').length; } catch(e) {}
+    el.textContent = '🟢 云端' + _fbRemoteCount + '条 · 本地' + localCount + '条 · 快照#' + _fbSnapshotCount;
   } else {
     el.textContent = '⚡ 本地模式';
   }
