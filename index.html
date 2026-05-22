@@ -1650,16 +1650,16 @@ function ghApiGet(cb) {
 }
 
 // Wrapper: GitHub API PUT via Android native bridge (async, non-blocking) or XHR fallback
-function ghApiPut(content, sha, cb) {
+function ghApiPut(path, content, sha, cb) {
   if (window.Android && typeof window.Android.ghPutAsync === 'function') {
     var id = 'p' + (++_ghCbId);
     _ghCallbacks[id] = {cb: cb, isPut: true};
-    Android.ghPutAsync('data/messages.json', content, sha || '', 'chat', id);
+    Android.ghPutAsync(path, content, sha || '', 'chat', id);
     return;
   }
   // XHR fallback
   var xhr = new XMLHttpRequest();
-  xhr.open('PUT', getMessagesUrl() + '&_=' + Date.now(), true);
+  xhr.open('PUT', 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/' + path + '&_=' + Date.now(), true);
   xhr.setRequestHeader('Authorization', 'token ' + ghToken());
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
   xhr.setRequestHeader('Content-Type', 'application/json');
@@ -1723,7 +1723,7 @@ function saveMessageToGithub(msg, retryCount) {
     if (existing.length > 500) existing = existing.slice(-500);
     var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
 
-    ghApiPut(content, sha, function(err2, putData) {
+    ghApiPut('data/messages.json', content, sha, function(err2, putData) {
       if (!err2) {
         _ghLastSha = putData.content.sha;
         showToast('✅ 已同步', 'success');
@@ -1780,7 +1780,7 @@ function flushUnsentIfNeeded() {
     if (existing.length <= _ghRemoteCount) return;
     var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
 
-    ghApiPut(content, sha, function(err2, putData) {
+    ghApiPut('data/messages.json', content, sha, function(err2, putData) {
       if (!err2) {
         _ghLastSha = putData.content.sha;
         _ghRemoteCount = existing.length;
@@ -4737,6 +4737,18 @@ function startRecording(e) {
     _mediaRecorder.ondataavailable = function(ev) {
       if (ev.data && ev.data.size > 0) _audioChunks.push(ev.data);
     };
+    _mediaRecorder.onstart = function() {
+      // Auto-stop after 15 seconds max
+      setTimeout(function() {
+        if (_mediaRecorder && _mediaRecorder.state === 'recording') {
+          _mediaRecorder.stop();
+          _recording = false;
+          var micBtn = document.getElementById('chat-mic-btn');
+          if (micBtn) { micBtn.classList.remove('recording'); micBtn.textContent = '🎤'; }
+          showToast('⏰ 已达最长录音时间 (15″)', 'info');
+        }
+      }, 15000);
+    };
     _mediaRecorder.onstop = function() {
       stream.getTracks().forEach(function(t) { t.stop(); });
       if (_audioChunks.length === 0) return;
@@ -4776,17 +4788,22 @@ function sendVoiceMessage(base64, duration, mimeType) {
   var user = getCurrentUser();
   if (!user) return;
 
+  var msgId = Date.now();
+  var voiceExt = mimeType.indexOf('webm') !== -1 ? 'webm' : (mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm');
+  var voiceFile = 'data/voice/' + msgId + '.' + voiceExt;
+
   var msg = {
-    id: Date.now(),
+    id: msgId,
     fromMemberId: user.memberId,
     fromMemberName: user.memberName,
     type: 'voice',
-    audioBase64: base64,
+    voiceFile: voiceFile,
     audioMime: mimeType,
     duration: duration,
     created: Date.now()
   };
 
+  // Save locally first (with voiceFile ref, NOT base64)
   try {
     var msgs = getMessages();
     msgs.push(msg);
@@ -4795,19 +4812,59 @@ function sendVoiceMessage(base64, duration, mimeType) {
     updateChatBadge();
     renderChatMessages();
     scrollChatToBottom();
-    saveMessageToGithub(msg);
-    showToast('✅ 语音已发送 (' + duration + '″)', 'success');
-  } catch(e) {
-    var fallback = [];
-    try { fallback = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]'); } catch(ex) {}
-    fallback.push(msg);
-    try { localStorage.setItem('ft_chat_messages', JSON.stringify(fallback)); } catch(ex) {}
-    _messagesCache = fallback;
-    updateChatBadge();
-    renderChatMessages();
-    scrollChatToBottom();
-    showToast('⚠️ 已存本地', 'warning');
-  }
+  } catch(e) {}
+
+  showToast('⏳ 上传语音中...', 'info');
+
+  // Upload audio to separate file, then save message reference
+  ghApiPut(voiceFile, base64, '', function(err, data) {
+    if (!err) {
+      showToast('✅ 语音已发送 (' + duration + '″)', 'success');
+      // Save message to messages.json (without audioBase64, only voiceFile ref)
+      saveMsgRefToGithub(msg);
+    } else {
+      // Audio upload failed — save locally with base64 as fallback
+      msg.audioBase64 = base64;
+      var local = [];
+      try { local = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]'); } catch(ex) {}
+      // Replace existing ref-only msg with full base64 version
+      local = local.filter(function(m) { return m.id !== msg.id; });
+      local.push(msg);
+      _messagesCache = local;
+      try { localStorage.setItem('ft_chat_messages', JSON.stringify(local)); } catch(ex) {}
+      updateChatBadge();
+      renderChatMessages();
+      scrollChatToBottom();
+      showToast('⚠️ 语音已存本地', 'warning');
+    }
+  });
+}
+
+function saveMsgRefToGithub(msg) {
+  // Save the voice message (with voiceFile ref, no audioBase64) to messages.json
+  var cleanMsg = {};
+  for (var k in msg) { if (k !== 'audioBase64') cleanMsg[k] = msg[k]; }
+  // Merge into messages.json via read-modify-write
+  ghApiGet(function(err, data) {
+    var existing = [], sha = null;
+    if (data && !err) {
+      sha = data.sha;
+      try { existing = JSON.parse(b64decode(data.content)); } catch(e) {}
+    }
+    if (!existing.some(function(m) { return m.id === cleanMsg.id; })) {
+      existing.push(cleanMsg);
+    }
+    if (existing.length > 500) existing = existing.slice(-500);
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
+    ghApiPut('data/messages.json', content, sha, function(err2, putData) {
+      if (!err2) {
+        _ghLastSha = putData.content.sha;
+        _messagesCache = existing;
+        try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
+        updateChatBadge();
+      }
+    });
+  });
 }
 
 function sendChatMessage() {
@@ -5006,7 +5063,7 @@ function renderChatMessages() {
     var senderHTML = senderName ? '<div class="chat-sender">' + escHtml(senderName) + '</div>' : '';
 
     var contentHTML;
-    if (m.type === 'voice' && m.audioBase64) {
+    if (m.type === 'voice' && (m.audioBase64 || m.voiceFile)) {
       var mime = m.audioMime || 'audio/webm';
       var dur = m.duration || 1;
       var barsHTML = '';
@@ -5014,16 +5071,20 @@ function renderChatMessages() {
         var bh = 4 + Math.floor(Math.random() * 16);
         barsHTML += '<span class="voice-wave-bar" style="height:' + bh + 'px"></span>';
       }
-      // Use a unique ID per message for the audio element
       var audioId = 'va' + m.id;
+      var audioSrc;
+      if (m.voiceFile) {
+        audioSrc = 'https://raw.githubusercontent.com/' + window._ghDefaults.repo + '/' + window._ghDefaults.branch + '/' + m.voiceFile;
+      } else {
+        audioSrc = 'data:' + mime + ';base64,' + m.audioBase64;
+      }
       contentHTML =
         '<div class="chat-voice-player" data-msg-id="' + m.id + '">' +
         '<button class="voice-play-btn" id="vpb-' + m.id + '" onclick="toggleVoicePlay(\'' + audioId + '\',\'vpb-' + m.id + '\')">▶</button>' +
         '<div class="voice-wave">' + barsHTML + '</div>' +
         '<span class="voice-dur">' + dur + '″</span>' +
-        '<audio id="' + audioId + '" src="data:' + mime + ';base64,' + m.audioBase64 + '" preload="metadata" style="display:none" ' +
+        '<audio id="' + audioId + '" src="' + audioSrc + '" preload="none" style="display:none" ' +
         'onended="onVoiceEnded(\'vpb-' + m.id + '\')" ' +
-        'onloadedmetadata="onVoiceLoaded(\'vpb-' + m.id + '\',this)" ' +
         'onerror="onVoiceError(\'vpb-' + m.id + '\')"></audio>' +
         '</div>';
     } else {
