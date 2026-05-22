@@ -576,6 +576,8 @@ footer{display:none}
 .chat-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0}
 .chat-panel-title{font-size:1rem;font-weight:bold;color:var(--text)}
 .chat-panel-close{background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light);padding:4px 8px}
+.chat-refresh-btn{background:none;border:none;font-size:1rem;cursor:pointer;color:var(--text-light);padding:4px 6px;border-radius:50%;transition:all .2s}
+.chat-refresh-btn:active{transform:rotate(180deg)}
 .chat-status{font-size:.65rem;color:#999;text-align:center;padding:4px 10px;border-bottom:1px dashed #f0f0f0;flex-shrink:0}
 .chat-messages{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .chat-empty{text-align:center;color:var(--text-light);padding:40px 20px;font-size:.85rem}
@@ -4716,6 +4718,24 @@ function updateChatBadge() {
   badge.style.display = count > 0 ? 'flex' : 'none';
 }
 
+function forceRefreshMessages() {
+  if (!isGHReady()) { showToast('云端未连接', 'warning'); return; }
+  var btn = document.getElementById('chat-refresh-btn');
+  if (btn) btn.style.animation = 'spin 0.5s linear';
+  _db.collection('messages').get().then(function(snap) {
+    if (btn) btn.style.animation = '';
+    showToast('云端实际有 ' + snap.size + ' 条消息 (当前显示' + _fbRemoteCount + '条)', 'info');
+    // If server has more messages than our cache, restart the listener
+    if (snap.size > _fbRemoteCount) {
+      startMessagesListener();
+      showToast('已刷新，新发现 ' + (snap.size - _fbRemoteCount) + ' 条消息', 'success');
+    }
+  }).catch(function(e) {
+    if (btn) btn.style.animation = '';
+    showToast('刷新失败: ' + e.message, 'error');
+  });
+}
+
 function updateChatStatus() {
   var el = document.getElementById('chat-status');
   if (!el) return;
@@ -4858,7 +4878,10 @@ if ('serviceWorker' in navigator) {
 <div class="chat-panel" id="chat-panel">
   <div class="chat-panel-header">
     <span class="chat-panel-title">💬 家族群聊</span>
-    <button class="chat-panel-close" onclick="closeChatPanel()">✕</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="chat-refresh-btn" id="chat-refresh-btn" onclick="forceRefreshMessages()" title="强制刷新">🔄</button>
+      <button class="chat-panel-close" onclick="closeChatPanel()">✕</button>
+    </div>
   </div>
   <div class="chat-status" id="chat-status"></div>
   <div class="chat-messages" id="chat-messages">
