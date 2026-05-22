@@ -1819,6 +1819,16 @@ function renderLoginMemberList() {
   if (!list) return;
   var accounts = getAccounts();
   if (accounts.length === 0) {
+    // Try to sync from GitHub, show loading
+    var repo = getGHRepo();
+    if (repo) {
+      document.getElementById('login-card-sub').textContent = '正在同步账号...';
+      list.innerHTML = '<div style="text-align:center;font-size:.82rem;color:var(--text-light);padding:12px">⏳ 正在从云端加载账号...</div>';
+      syncAccounts().then(function() {
+        renderLoginMemberList();
+      });
+      return;
+    }
     document.getElementById('login-card-sub').textContent = '暂无账号，请联系管理员创建';
     list.innerHTML = '<div style="text-align:center;font-size:.82rem;color:var(--text-light);padding:12px">请管理员登录后<br>在"👤 账号管理"中创建账号</div>';
     return;
