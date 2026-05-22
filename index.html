@@ -526,13 +526,13 @@ footer{display:none}
 
 /* ===== Account System ===== */
 .user-btn {
-  min-width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary);
-  background: var(--primary); color: #fff; font-size: 1.2rem; cursor: pointer;
+  height: 34px; border-radius: 17px; border: 2px solid var(--primary);
+  background: var(--primary); color: #fff; font-size: .75rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.15); transition: all .2s;
-  flex-shrink: 0; padding: 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,.12); transition: all .2s;
+  flex-shrink: 0; padding: 0 12px; font-weight: 700; font-family: inherit;
 }
-.user-btn:active { transform: scale(.9); background: #fff; color: var(--primary); }
+.user-btn:active { transform: scale(.95); background: #fff; color: var(--primary); }
 .user-btn.logged-in {
   width: auto; height: auto; border-radius: 14px;
   background: var(--primary); color: #fff; padding: 4px 10px;
@@ -1792,7 +1792,7 @@ function updateUserUI() {
     btn.classList.add('logged-in');
     btn.setAttribute('title', '点击退出登录');
   } else {
-    btn.textContent = '\U0001f464';
+    btn.textContent = '登录';
     btn.classList.remove('logged-in');
     btn.setAttribute('title', '家族成员登录');
   }
