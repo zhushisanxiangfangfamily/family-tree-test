@@ -1583,9 +1583,9 @@ function initGitHubSync() {
   _ghReady = true;
   updateSyncStatus(true);
   showToast('✅ 云端已连接', 'success');
-  if (_ghPollTimer) clearTimeout(_ghPollTimer);
-  // Start first poll after short delay, then chain recursively (no fixed interval)
-  _ghPollTimer = setTimeout(function() { pollMessages(); }, 1500);
+  if (_ghPollTimer) clearInterval(_ghPollTimer);
+  // Overlapping polls for maximum receive speed (no guard, each takes ~5s)
+  _ghPollTimer = setInterval(pollMessages, 2000);
   // Background flush for unsent messages every 30s
   setInterval(flushUnsentIfNeeded, 30000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
@@ -1721,20 +1721,13 @@ function ghApiPut(path, content, sha, cb) {
 
 var _lastPollStart = 0;
 var _lastPollMs = 0;
-var _pollInFlight = false;
 function pollMessages() {
   if (!_ghReady) return;
-  if (_pollInFlight) return; // skip if previous poll still waiting for response
   _ghPollCount++;
   _lastPollStart = Date.now();
-  _pollInFlight = true;
   ghApiGet(function(err, data) {
-    _pollInFlight = false;
     var elapsed = Date.now() - _lastPollStart;
     _lastPollMs = elapsed;
-    // Schedule next poll (chain immediately after completion)
-    if (_ghPollTimer) clearTimeout(_ghPollTimer);
-    _ghPollTimer = setTimeout(function() { pollMessages(); }, 200);
     if (err) { updateChatStatus(); return; }
     if (!data) { _ghRemoteCount = 0; updateChatStatus(); return; }
     _ghLastSha = data.sha;
