@@ -1584,9 +1584,9 @@ var _adaptivePollTimer = null;
 
 function getAdaptiveInterval() {
   var elapsed = Date.now() - _lastRemoteMsgTime;
-  if (elapsed < 120000) return 2000;   // active: someone talking → 2s
-  if (elapsed < 600000) return 10000;  // warm: recent chat → 10s
-  return 60000;                         // idle: no activity → 60s
+  if (elapsed < 120000) return 3000;   // active: API, real-time → 3s
+  if (elapsed < 600000) return 10000;  // warm: API, moderate → 10s
+  return 60000;                         // idle: raw CDN, no rate limit → 60s
 }
 
 function scheduleNextPoll() {
@@ -1741,35 +1741,52 @@ function pollMessages() {
   if (!_ghReady) return;
   _ghPollCount++;
   _lastPollStart = Date.now();
-  ghRawGet(function(err, remote) {
+
+  // Active/warm → API (real-time), idle → raw CDN (no rate limit)
+  var useRaw = getAdaptiveInterval() >= 60000;
+
+  function processRemote(remote) {
     var elapsed = Date.now() - _lastPollStart;
     _lastPollMs = elapsed;
     scheduleNextPoll();
-    if (err) { updateChatStatus(); return; }
     if (!remote) { _ghRemoteCount = 0; updateChatStatus(); return; }
     remote.sort(function(a,b) { return a.created - b.created; });
-    // Detect new remote messages → stay in fast poll mode
     var localIds = {};
     getMessagesLocal().forEach(function(m) { localIds[m.id] = true; });
     var hasNew = false;
     for (var i = 0; i < remote.length; i++) {
       if (!localIds[remote[i].id]) { hasNew = true; break; }
     }
-    if (hasNew) _lastRemoteMsgTime = Date.now();
+    if (hasNew) _lastRemoteMsgTime = Date.now(); // reset to active
     _ghRemoteCount = remote.length;
     var local = getMessagesLocal();
     var merged = {};
     local.forEach(function(m) { merged[m.id] = m; });
     remote.forEach(function(m) { merged[m.id] = m; });
     _messagesCache = Object.values(merged).sort(function(a,b) { return a.created - b.created; });
-    // Clear failed flags for messages now synced to remote
     remote.forEach(function(m) { delete _failedMsgIds[m.id]; });
     if (Object.keys(_failedMsgIds).length === 0) _failedMsgIds = {};
     try { localStorage.setItem('ft_chat_messages', JSON.stringify(_messagesCache)); } catch(ex) {}
     updateChatBadge();
     renderChatMessages();
     updateChatStatus();
-  });
+  }
+
+  if (useRaw) {
+    ghRawGet(function(err, remote) {
+      if (err) { scheduleNextPoll(); updateChatStatus(); return; }
+      processRemote(remote);
+    });
+  } else {
+    ghApiGet(function(err, data) {
+      if (err) { scheduleNextPoll(); updateChatStatus(); return; }
+      if (!data) { _ghRemoteCount = 0; scheduleNextPoll(); updateChatStatus(); return; }
+      _ghLastSha = data.sha;
+      var remote = [];
+      try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
+      processRemote(remote);
+    });
+  }
 }
 
 var _saveStartTime = 0;
