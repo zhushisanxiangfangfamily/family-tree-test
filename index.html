@@ -1651,6 +1651,39 @@ function ghApiGet(cb) {
   xhr.send();
 }
 
+// Wrapper: raw.githubusercontent.com GET (CDN, no rate limit, no auth)
+// Returns parsed messages array directly (no API wrapper, no base64)
+function ghRawGet(cb) {
+  if (window.Android && typeof window.Android.ghRawGetAsync === 'function') {
+    var id = 'r' + (++_ghCbId);
+    _ghCallbacks[id] = {cb: function(err, data) {
+      if (err) { cb(err); return; }
+      if (!data) { cb(null, null); return; }
+      // data is the raw JSON string from raw.githubusercontent.com
+      try { cb(null, JSON.parse(data)); } catch(e) { cb(e.message); }
+    }, isPut: false, isRaw: true};
+    Android.ghRawGetAsync('data/messages.json', id);
+    return;
+  }
+  // XHR fallback
+  var rawUrl = 'https://raw.githubusercontent.com/' + window._ghDefaults.repo + '/' + window._ghDefaults.branch + '/data/messages.json';
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', rawUrl + '?_=' + Date.now(), true);
+  xhr.timeout = 15000;
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try { cb(null, JSON.parse(xhr.responseText)); } catch(e) { cb(e.message); }
+    } else if (xhr.status === 404) {
+      cb(null, null);
+    } else {
+      cb('HTTP ' + xhr.status);
+    }
+  };
+  xhr.onerror = function() { cb('network error'); };
+  xhr.ontimeout = function() { cb('timeout'); };
+  xhr.send();
+}
+
 // Wrapper: GitHub API PUT via Android native bridge (async, non-blocking) or XHR fallback
 function ghApiPut(path, content, sha, cb) {
   if (window.Android && typeof window.Android.ghPutAsync === 'function') {
@@ -1687,15 +1720,12 @@ function pollMessages() {
   _ghPollCount++;
   _lastPollStart = Date.now();
   _pollInFlight = true;
-  ghApiGet(function(err, data) {
+  ghRawGet(function(err, remote) {
     _pollInFlight = false;
     var elapsed = Date.now() - _lastPollStart;
     _lastPollMs = elapsed;
     if (err) { updateChatStatus(); return; }
-    if (!data) { _ghRemoteCount = 0; updateChatStatus(); return; }
-    _ghLastSha = data.sha;
-    var remote = [];
-    try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
+    if (!remote) { _ghRemoteCount = 0; updateChatStatus(); return; }
     remote.sort(function(a,b) { return a.created - b.created; });
     _ghRemoteCount = remote.length;
     var local = getMessagesLocal();
