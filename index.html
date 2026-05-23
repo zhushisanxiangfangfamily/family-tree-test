@@ -1775,12 +1775,14 @@ function ghApiPut(path, content, sha, cb) {
     if (xhr.status === 200 || xhr.status === 201) {
       try { cb(null, JSON.parse(xhr.responseText)); } catch(e) { cb(e.message); }
     } else {
-      cb('HTTP ' + xhr.status);
+      cb('status ' + xhr.status);
     }
   };
   xhr.onerror = function() { cb('network error'); };
   xhr.ontimeout = function() { cb('timeout'); };
-  xhr.send(JSON.stringify({message:'chat', content:content, sha:sha, branch:window._ghDefaults.branch}));
+  var putBody = {message:'chat', content:content, branch:window._ghDefaults.branch};
+  if (sha) putBody.sha = sha;
+  xhr.send(JSON.stringify(putBody));
 }
 
 var _lastPollStart = 0;
