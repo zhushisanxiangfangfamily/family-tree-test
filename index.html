@@ -1584,9 +1584,9 @@ var _adaptivePollTimer = null;
 
 function getAdaptiveInterval() {
   var elapsed = Date.now() - _lastRemoteMsgTime;
-  if (elapsed < 120000) return 3000;   // active: API, real-time → 3s
-  if (elapsed < 600000) return 10000;  // warm: API, moderate → 10s
-  return 60000;                         // idle: raw CDN, no rate limit → 60s
+  if (elapsed < 120000) return 3000;   // active: 3s
+  if (elapsed < 600000) return 10000;  // warm: 10s
+  return 60000;                         // idle: 60s
 }
 
 function scheduleNextPoll() {
@@ -1742,14 +1742,15 @@ function pollMessages() {
   _ghPollCount++;
   _lastPollStart = Date.now();
 
-  // Active/warm → API (real-time), idle → raw CDN (no rate limit)
-  var useRaw = getAdaptiveInterval() >= 60000;
-
-  function processRemote(remote) {
+  ghApiGet(function(err, data) {
     var elapsed = Date.now() - _lastPollStart;
     _lastPollMs = elapsed;
     scheduleNextPoll();
-    if (!remote) { _ghRemoteCount = 0; updateChatStatus(); return; }
+    if (err) { updateChatStatus(); return; }
+    if (!data) { _ghRemoteCount = 0; updateChatStatus(); return; }
+    _ghLastSha = data.sha;
+    var remote = [];
+    try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
     remote.sort(function(a,b) { return a.created - b.created; });
     var localIds = {};
     getMessagesLocal().forEach(function(m) { localIds[m.id] = true; });
@@ -1757,7 +1758,7 @@ function pollMessages() {
     for (var i = 0; i < remote.length; i++) {
       if (!localIds[remote[i].id]) { hasNew = true; break; }
     }
-    if (hasNew) _lastRemoteMsgTime = Date.now(); // reset to active
+    if (hasNew) _lastRemoteMsgTime = Date.now();
     _ghRemoteCount = remote.length;
     var local = getMessagesLocal();
     var merged = {};
@@ -1770,23 +1771,7 @@ function pollMessages() {
     updateChatBadge();
     renderChatMessages();
     updateChatStatus();
-  }
-
-  if (useRaw) {
-    ghRawGet(function(err, remote) {
-      if (err) { scheduleNextPoll(); updateChatStatus(); return; }
-      processRemote(remote);
-    });
-  } else {
-    ghApiGet(function(err, data) {
-      if (err) { scheduleNextPoll(); updateChatStatus(); return; }
-      if (!data) { _ghRemoteCount = 0; scheduleNextPoll(); updateChatStatus(); return; }
-      _ghLastSha = data.sha;
-      var remote = [];
-      try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
-      processRemote(remote);
-    });
-  }
+  });
 }
 
 var _saveStartTime = 0;
