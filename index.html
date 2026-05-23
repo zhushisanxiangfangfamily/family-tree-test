@@ -527,6 +527,8 @@ footer{display:none}
 .chat-bubble.own{background:#4A90D9;color:#fff;border-bottom-right-radius:4px}
 .chat-bubble.other{background:#fff;color:#333;border:1px solid #e8e8e8;border-bottom-left-radius:4px}
 .chat-time{font-size:.6rem;color:#bbb;margin-top:3px;padding:0 4px}
+.chat-fail-mark{font-size:.75rem;cursor:pointer;margin:0 4px;align-self:center;opacity:.7}
+.chat-fail-mark:hover{opacity:1}
 .chat-input-bar{display:flex;gap:8px;padding:10px 14px;border-top:1px solid #e8e8e8;flex-shrink:0;align-items:center}
 .chat-input{flex:1;border:1px solid #ddd;border-radius:20px;padding:10px 16px;font-size:.85rem;outline:none;font-family:inherit;transition:border .2s}
 .chat-input:focus{border-color:#4A90D9}
@@ -1701,6 +1703,9 @@ function pollMessages() {
     local.forEach(function(m) { merged[m.id] = m; });
     remote.forEach(function(m) { merged[m.id] = m; });
     _messagesCache = Object.values(merged).sort(function(a,b) { return a.created - b.created; });
+    // Clear failed flags for messages now synced to remote
+    remote.forEach(function(m) { delete _failedMsgIds[m.id]; });
+    if (Object.keys(_failedMsgIds).length === 0) _failedMsgIds = {};
     try { localStorage.setItem('ft_chat_messages', JSON.stringify(_messagesCache)); } catch(ex) {}
     updateChatBadge();
     renderChatMessages();
@@ -1709,6 +1714,7 @@ function pollMessages() {
 }
 
 var _saveStartTime = 0;
+var _failedMsgIds = {}; // msgId -> true for messages that failed to sync
 var _syncState = ''; // '', 'saving', 'synced', 'error'
 var _syncStateTimer = 0;
 function setSyncState(s) {
@@ -1734,6 +1740,7 @@ function saveMessageToGithub(msg, retryCount) {
     var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
     ghApiPut('data/messages.json', content, _ghLastSha, function(err2, putData) {
       if (!err2) {
+        delete _failedMsgIds[msg.id];
         _ghLastSha = putData.content.sha;
         setSyncState('synced');
         _messagesCache = existing;
@@ -1746,6 +1753,7 @@ function saveMessageToGithub(msg, retryCount) {
       } else if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        _failedMsgIds[msg.id] = true;
         setSyncState('error');
         showToast('⚠️ 已存本地 (PUT失败:' + err2 + ')', 'warning');
         fallbackSaveLocal(msg);
@@ -1760,6 +1768,7 @@ function saveMessageToGithub(msg, retryCount) {
       if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        _failedMsgIds[msg.id] = true;
         setSyncState('error');
         showToast('⚠️ 已存本地 (GET失败:' + err + ')', 'warning');
         fallbackSaveLocal(msg);
@@ -1779,6 +1788,7 @@ function saveMessageToGithub(msg, retryCount) {
 
     ghApiPut('data/messages.json', content, sha, function(err2, putData) {
       if (!err2) {
+        delete _failedMsgIds[msg.id];
         _ghLastSha = putData.content.sha;
         setSyncState('synced');
         _messagesCache = existing;
@@ -1790,12 +1800,25 @@ function saveMessageToGithub(msg, retryCount) {
       } else if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        _failedMsgIds[msg.id] = true;
         setSyncState('error');
         showToast('⚠️ 已存本地 (PUT失败:' + err2 + ')', 'warning');
         fallbackSaveLocal(msg);
       }
     });
   });
+}
+
+function retryFailedMsg(msgId) {
+  var msg = null;
+  var all = getMessages();
+  for (var i = 0; i < all.length; i++) {
+    if (all[i].id === msgId) { msg = all[i]; break; }
+  }
+  if (!msg) return;
+  delete _failedMsgIds[msg.id];
+  renderChatMessages(); // remove ❗ immediately, will reappear if fails again
+  saveMessageToGithub(msg);
 }
 
 function fallbackSaveLocal(msg) {
@@ -4890,6 +4913,7 @@ function sendVoiceMessage(base64, duration, mimeType) {
       updateChatBadge();
       renderChatMessages();
       scrollChatToBottom();
+      _failedMsgIds[msg.id] = true;
       showToast('⚠️ 语音已存本地', 'warning');
     }
   });
@@ -5057,7 +5081,8 @@ function renderChatMessages() {
   updateChatStatus();
 
   // Skip re-render if nothing changed (prevents audio interruption during poll)
-  var fp = msgs.length + '|' + (msgs.length ? msgs[msgs.length-1].id : '') + '|' + (msgs.length ? msgs[msgs.length-1].created : '');
+  var failedKeys = Object.keys(_failedMsgIds).join(',');
+  var fp = msgs.length + '|' + (msgs.length ? msgs[msgs.length-1].id : '') + '|' + (msgs.length ? msgs[msgs.length-1].created : '') + '|' + failedKeys;
   if (fp === _lastRenderedFingerprint && container.children.length > 0) return;
   _lastRenderedFingerprint = fp;
 
@@ -5131,10 +5156,13 @@ function renderChatMessages() {
       contentHTML = escHtml(m.text || '');
     }
 
+    var failMark = _failedMsgIds[m.id] ? '<span class="chat-fail-mark" onclick="event.stopPropagation();retryFailedMsg(' + m.id + ')" title="同步失败，点击重试">❗</span>' : '';
+
     return dateSep +
       '<div class="' + rowClass + '">' +
       senderHTML +
       '<div class="' + bubbleClass + '">' + contentHTML + '</div>' +
+      failMark +
       '<div class="chat-time">' + timeStr + '</div>' +
       '</div>';
   }).join('');
