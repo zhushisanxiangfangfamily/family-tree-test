@@ -568,6 +568,8 @@ footer{display:none}
 .mailbox-item-to{font-size:.7rem;color:#999}
 .mailbox-item-text{font-size:.82rem;color:#333;line-height:1.5;word-break:break-word;white-space:pre-wrap}
 .mailbox-item-time{font-size:.65rem;color:#bbb;margin-top:6px;text-align:right}
+.mailbox-item-bday{background:#fff8e1;border-color:#ffe082}
+.mailbox-item-bday .mailbox-item-text{font-size:.9rem;text-align:center;color:#5D3A1A}
 
 
 /* ===== Account System ===== */
@@ -4793,6 +4795,7 @@ function checkBirthdays() {
     var today = new Date();
     var todayM = today.getMonth() + 1;
     var todayD = today.getDate();
+    var dateStr = today.getFullYear() + '-' + pad(todayM) + '-' + pad(todayD);
 
     // Find living members whose birthday is today
     var birthdays = members.filter(function(m) {
@@ -4803,12 +4806,40 @@ function checkBirthdays() {
       return parseInt(bd.month) === todayM && parseInt(bd.day) === todayD;
     });
 
+    // Auto-generate birthday notifications in mailbox
     if (birthdays.length > 0) {
+      var letters = getBirthdayLetters();
+      var changed = false;
+      for (var i = 0; i < birthdays.length; i++) {
+        var p = birthdays[i];
+        var age = today.getFullYear() - parseInt((parseBirthDate(p.birth).year || today.getFullYear()));
+        var dedupId = 'bday-' + p.id + '-' + dateStr;
+        // Skip if already exists for this person today
+        if (letters.some(function(l) { return l.id === dedupId; })) continue;
+        var birthYear = parseBirthDate(p.birth).year;
+        var ageText = birthYear ? (' ' + age + '岁') : '';
+        letters.push({
+          id: dedupId,
+          type: 'birthday',
+          memberId: p.id,
+          memberName: p.name,
+          age: age,
+          text: '🎂 ' + p.name + ' 今天' + ageText + '生日！🎉',
+          created: Date.now(),
+          read: false
+        });
+        changed = true;
+      }
+      if (changed) saveBirthdayLetters(letters);
+
       _bdayPeople = birthdays.slice();
       setTimeout(function() {
         showBirthdayPopup(_bdayPeople);
       }, 500);
     }
+
+    // Clean old mailbox items (older than 3 days)
+    cleanOldMailboxItems();
 
     // Update badges
     updateChatBadge();
@@ -5212,7 +5243,7 @@ function renderMailboxList() {
   letters.sort(function(a, b) { return b.created - a.created; });
   updateMailBadge();
   if (letters.length === 0) {
-    container.innerHTML = '<div class="mailbox-empty">暂无生日信件 💌</div>';
+    container.innerHTML = '<div class="mailbox-empty">暂无生日提醒 💌</div>';
     return;
   }
   var html = '';
@@ -5220,17 +5251,30 @@ function renderMailboxList() {
     var l = letters[i];
     var d = new Date(l.created);
     var time = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-    var toNames = l.toMemberNames ? l.toMemberNames.join(', ') : (l.toMemberName || '');
-    html += '<div class="mailbox-item">';
-    html += '<div class="mailbox-item-header">';
-    html += '<span class="mailbox-item-from">' + escHtml(l.fromMemberName) + '</span>';
-    html += '<span class="mailbox-item-to">→ ' + escHtml(toNames) + '</span>';
-    html += '</div>';
-    html += '<div class="mailbox-item-text">' + escHtml(l.text) + '</div>';
+    html += '<div class="mailbox-item' + (l.type === 'birthday' ? ' mailbox-item-bday' : '') + '">';
+    if (l.type === 'birthday') {
+      html += '<div class="mailbox-item-text">' + escHtml(l.text) + '</div>';
+    } else {
+      var toNames = l.toMemberNames ? l.toMemberNames.join(', ') : (l.toMemberName || '');
+      html += '<div class="mailbox-item-header">';
+      html += '<span class="mailbox-item-from">' + escHtml(l.fromMemberName || '') + '</span>';
+      html += '<span class="mailbox-item-to">→ ' + escHtml(toNames) + '</span>';
+      html += '</div>';
+      html += '<div class="mailbox-item-text">' + escHtml(l.text) + '</div>';
+    }
     html += '<div class="mailbox-item-time">' + time + '</div>';
     html += '</div>';
   }
   container.innerHTML = html;
+}
+
+function cleanOldMailboxItems() {
+  var letters = getBirthdayLetters();
+  var cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000; // 3 days
+  var filtered = letters.filter(function(l) { return l.created > cutoff; });
+  if (filtered.length !== letters.length) {
+    saveBirthdayLetters(filtered);
+  }
 }
 
 function updateMailBadge() {
@@ -5416,26 +5460,11 @@ function sendBirthdayLetter() {
   var text = msgEl.value.trim();
   msgEl.value = '';
 
-  // Save to birthday mailbox
-  var toMemberNames = _bdayPeople.map(function(p) { return p.name; });
-  var letter = {
-    id: Date.now(),
-    fromMemberId: user.memberId,
-    fromMemberName: user.memberName,
-    toMemberNames: toMemberNames,
-    text: text,
-    created: Date.now(),
-    read: true
-  };
-  var letters = getBirthdayLetters();
-  letters.push(letter);
-  saveBirthdayLetters(letters);
-
-  // Auto-send to group chat
-  var toNames = toMemberNames.join('、');
+  // Auto-send to group chat (not saved to mailbox — mailbox is for system notifications)
+  var toNames = _bdayPeople.map(function(p) { return p.name; }).join('、');
   var chatText = '🎂 祝' + toNames + '生日快乐！\n' + text;
   var msg = {
-    id: Date.now() + 1,
+    id: Date.now(),
     fromMemberId: user.memberId,
     fromMemberName: user.memberName,
     type: 'text',
@@ -5451,7 +5480,6 @@ function sendBirthdayLetter() {
   saveMessageToGithub(msg);
 
   closeBirthdayPopup();
-  renderMailboxList();
   showToast('💌 祝福已发送到群聊', 'success');
 }
 
