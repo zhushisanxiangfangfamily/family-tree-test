@@ -157,6 +157,7 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
 @media(min-width:1024px){.page{padding:24px 36px}}
 @media(min-width:1400px){.page{padding:28px 48px}}
 .page.active{display:block}
+@media(max-width:768px){.page{background-attachment:fixed!important}}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .hero{text-align:center;padding:32px 18px 24px;background:#fff center/cover;
   border-radius:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);position:relative;overflow:hidden}
@@ -860,7 +861,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- HOME -->
-<div id="page-home" style="background-image:url('images/img_002.jpg');background-size:100% 100%" class="page active">
+<div id="page-home" style="background-image:url('images/img_002.jpg');background-size:cover;background-position:center" class="page active">
   <div class="hero has-hero-bg" style="background-image: url(&quot;images/img_004.jpg&quot;);">
     <div class="hero-title" id="hero-title">朱氏三厢房家族族谱</div>
     <div class="hero-sub" id="hero-sub">薪火相传 · 血脉相连 · 家和万事兴</div>
@@ -986,7 +987,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- TREE -->
-<div id="page-tree" style="background-image:url('images/img_009.jpg');background-size:100% 100%" class="page">
+<div id="page-tree" style="background-image:url('images/img_009.jpg');background-size:cover;background-position:center" class="page">
   <div class="admin-panel" id="tree-admin-panel">
     <div class="admin-panel-title">⚙️ 族谱树管理</div>
     <div style="font-size:.85rem;color:var(--text-light);margin-bottom:10px">
@@ -1025,7 +1026,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- MEMBERS -->
-<div id="page-members" style="background-image:url('images/img_069.jpg');background-size:100% 100%" class="page">
+<div id="page-members" style="background-image:url('images/img_069.jpg');background-size:cover;background-position:center" class="page">
   <div class="admin-panel" id="members-admin-panel">
     <div class="admin-panel-title">⚙️ 族人管理</div>
     <div class="admin-actions">
@@ -1038,7 +1039,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
 </div>
 
 <!-- STORIES -->
-<div id="page-stories" style="background-image:url('images/img_122.jpg');background-size:100% 100%" class="page">
+<div id="page-stories" style="background-image:url('images/img_122.jpg');background-size:cover;background-position:center" class="page">
   <div class="admin-panel" id="stories-admin-panel">
     <div class="admin-panel-title">⚙️ 故事管理</div>
     <div class="admin-actions">
@@ -2259,7 +2260,7 @@ function injectPageBgStyles(html, configObj) {
     var tagPattern = 'id="page-' + pages[i] + '"';
     var idx = html.indexOf(tagPattern);
     if (idx === -1) continue;
-    var styleStr = ' style="background-image:url(\'' + url + '\');background-size:100% 100%"';
+    var styleStr = ' style="background-image:url(\'' + url + '\');background-size:cover;background-position:center"';
     html = html.substring(0, idx + tagPattern.length) + styleStr + html.substring(idx + tagPattern.length);
   }
   // Hero card background
