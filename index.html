@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN"><head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,minimum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="朱氏族谱">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -57,8 +57,8 @@ body:not([data-theme]){
   --accent-text:#3E1F0D;--nav-gradient:linear-gradient(135deg,#8B1A1A 0%,#5C0E0E 100%);
   --hero-gradient:linear-gradient(180deg,#FFF8E7 0%,#F5E6C8 100%);
 }
-html{background:var(--bg);transition:background .3s}
-body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;padding-bottom:56px}
+html{background:var(--bg);width:100%;min-height:100vh;min-height:100dvh;transition:background .3s}
+body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);width:100%;min-height:100vh;min-height:100dvh;transition:background .3s,color .3s;padding-bottom:56px;margin:0}
 /* Top header bar */
 .top-header{position:sticky;top:0;z-index:100;background:#fff;padding:10px 16px;
   display:flex;align-items:center;justify-content:space-between;height:48px;
@@ -151,11 +151,11 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
 .splash-slide-index{z-index:4;position:absolute;top:16px;left:50%;transform:translateX(-50%);
   color:rgba(255,255,255,.4);font-size:.7rem;letter-spacing:1px;display:none}
 .admin-mode .splash-slide.active .splash-slide-index{display:block}
-.page{display:none;padding:16px;max-width:100%;margin:0 auto;animation:fadeIn .25s ease}
-@media(min-width:600px){.page{padding:20px 24px}}
-@media(min-width:768px){.page{max-width:1100px;padding:24px 28px}}
-@media(min-width:1024px){.page{max-width:1300px;padding:28px 36px}}
-@media(min-width:1400px){.page{max-width:1500px;padding:32px 48px}}
+.page{display:none;padding:12px 16px;max-width:100%;margin:0 auto;animation:fadeIn .25s ease}
+@media(min-width:600px){.page{padding:16px 24px}}
+@media(min-width:768px){.page{padding:20px 28px}}
+@media(min-width:1024px){.page{padding:24px 36px}}
+@media(min-width:1400px){.page{padding:28px 48px}}
 .page.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .hero{text-align:center;padding:32px 18px 24px;background:#fff center/cover;
