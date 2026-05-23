@@ -1579,13 +1579,29 @@ function getMessagesUrl() {
   return 'https://api.github.com/repos/' + d.repo + '/contents/data/messages.json?ref=' + d.branch;
 }
 
+var _lastRemoteMsgTime = 0;
+var _adaptivePollTimer = null;
+
+function getAdaptiveInterval() {
+  var elapsed = Date.now() - _lastRemoteMsgTime;
+  if (elapsed < 120000) return 2000;   // active: someone talking → 2s
+  if (elapsed < 600000) return 10000;  // warm: recent chat → 10s
+  return 60000;                         // idle: no activity → 60s
+}
+
+function scheduleNextPoll() {
+  if (_adaptivePollTimer) clearTimeout(_adaptivePollTimer);
+  if (!_ghReady) return;
+  _adaptivePollTimer = setTimeout(function() { pollMessages(); }, getAdaptiveInterval());
+}
+
 function initGitHubSync() {
   _ghReady = true;
   updateSyncStatus(true);
   showToast('✅ 云端已连接', 'success');
   if (_ghPollTimer) clearInterval(_ghPollTimer);
-  // Overlapping polls for maximum receive speed (no guard, each takes ~5s)
-  _ghPollTimer = setInterval(pollMessages, 2000);
+  _lastRemoteMsgTime = Date.now(); // start in active mode
+  scheduleNextPoll();
   // Background flush for unsent messages every 30s
   setInterval(flushUnsentIfNeeded, 30000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
@@ -1725,15 +1741,21 @@ function pollMessages() {
   if (!_ghReady) return;
   _ghPollCount++;
   _lastPollStart = Date.now();
-  ghApiGet(function(err, data) {
+  ghRawGet(function(err, remote) {
     var elapsed = Date.now() - _lastPollStart;
     _lastPollMs = elapsed;
+    scheduleNextPoll();
     if (err) { updateChatStatus(); return; }
-    if (!data) { _ghRemoteCount = 0; updateChatStatus(); return; }
-    _ghLastSha = data.sha;
-    var remote = [];
-    try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
+    if (!remote) { _ghRemoteCount = 0; updateChatStatus(); return; }
     remote.sort(function(a,b) { return a.created - b.created; });
+    // Detect new remote messages → stay in fast poll mode
+    var localIds = {};
+    getMessagesLocal().forEach(function(m) { localIds[m.id] = true; });
+    var hasNew = false;
+    for (var i = 0; i < remote.length; i++) {
+      if (!localIds[remote[i].id]) { hasNew = true; break; }
+    }
+    if (hasNew) _lastRemoteMsgTime = Date.now();
     _ghRemoteCount = remote.length;
     var local = getMessagesLocal();
     var merged = {};
@@ -5056,11 +5078,12 @@ function updateChatStatus() {
     var localCount = 0;
     try { localCount = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]').length; } catch(e) {}
     var timing = _lastPollMs ? ' · ' + _lastPollMs + 'ms' : '';
+    var interval = getAdaptiveInterval ? ' · ' + (getAdaptiveInterval()/1000).toFixed(0) + 's' : '';
     var sync = '';
     if (_syncState === 'saving') sync = ' · ⏳';
     else if (_syncState === 'synced') sync = ' · ✅';
     else if (_syncState === 'error') sync = ' · ⚠️';
-    el.textContent = (_ghReady?'🟢':'🔴') + ' 云端' + _ghRemoteCount + ' · 本地' + localCount + ' · 轮询#' + _ghPollCount + timing + sync;
+    el.textContent = (_ghReady?'🟢':'🔴') + ' 云端' + _ghRemoteCount + ' · 本地' + localCount + ' · 轮询#' + _ghPollCount + timing + interval + sync;
   } else {
     el.textContent = '⚡ 本地模式';
   }
