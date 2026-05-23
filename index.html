@@ -3029,10 +3029,10 @@ function syncMusicState() {
   if (cfg.musicEnabled !== false) {
     if (btn) { btn.classList.remove('off'); btn.textContent = '🎵'; }
     var rawUrl = cfg.musicUrl||'';
-    var encodedUrl = rawUrl ? encodeURI(rawUrl) : '';
     if (window.Android) {
-      Android.playMusic(encodedUrl);
+      Android.playMusic(rawUrl);
     } else {
+      var encodedUrl = rawUrl ? encodeURI(rawUrl) : '';
       var a = ensureHtmlAudio();
       if (a.getAttribute('data-src') !== encodedUrl) {
         a.setAttribute('data-src', encodedUrl);
@@ -4828,6 +4828,7 @@ document.addEventListener('keydown', e => {
 applyConfig();
 initGitHubSync();
 updateUserUI();
+syncMusicState();
 // Force-hide admin panels + reset admin button on load (export may have baked in admin state)
 document.querySelectorAll('.admin-panel').forEach(function(p){ p.classList.remove('visible'); });
 var ab = document.getElementById('admin-btn');
