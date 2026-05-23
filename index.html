@@ -57,7 +57,8 @@ body:not([data-theme]){
   --accent-text:#3E1F0D;--nav-gradient:linear-gradient(135deg,#8B1A1A 0%,#5C0E0E 100%);
   --hero-gradient:linear-gradient(180deg,#FFF8E7 0%,#F5E6C8 100%);
 }
-body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;background:transparent;color:var(--text);min-height:100vh;transition:background .3s,color .3s;padding-bottom:56px}
+html{background:var(--bg);transition:background .3s}
+body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;transition:background .3s,color .3s;padding-bottom:56px}
 /* Top header bar */
 .top-header{position:sticky;top:0;z-index:100;background:#fff;padding:10px 16px;
   display:flex;align-items:center;justify-content:space-between;height:48px;
@@ -151,6 +152,8 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
   color:rgba(255,255,255,.4);font-size:.7rem;letter-spacing:1px;display:none}
 .admin-mode .splash-slide.active .splash-slide-index{display:block}
 .page{display:none;padding:16px;max-width:800px;margin:0 auto;animation:fadeIn .25s ease}
+@media(min-width:768px){.page{max-width:720px;padding:20px 24px}}
+@media(min-width:1024px){.page{max-width:960px;padding:24px 32px}}
 .page.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 .hero{text-align:center;padding:32px 18px 24px;background:#fff center/cover;
