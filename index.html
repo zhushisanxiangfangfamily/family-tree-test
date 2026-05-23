@@ -1583,12 +1583,9 @@ function initGitHubSync() {
   _ghReady = true;
   updateSyncStatus(true);
   showToast('✅ 云端已连接', 'success');
-  if (_ghPollTimer) clearInterval(_ghPollTimer);
-  // Async native bridge — fast polling won't block UI
-  setTimeout(function() {
-    pollMessages();
-    _ghPollTimer = setInterval(pollMessages, 3000);
-  }, 1500);
+  if (_ghPollTimer) clearTimeout(_ghPollTimer);
+  // Start first poll after short delay, then chain recursively (no fixed interval)
+  _ghPollTimer = setTimeout(function() { pollMessages(); }, 1500);
   // Background flush for unsent messages every 30s
   setInterval(flushUnsentIfNeeded, 30000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
@@ -1731,12 +1728,18 @@ function pollMessages() {
   _ghPollCount++;
   _lastPollStart = Date.now();
   _pollInFlight = true;
-  ghRawGet(function(err, remote) {
+  ghApiGet(function(err, data) {
     _pollInFlight = false;
     var elapsed = Date.now() - _lastPollStart;
     _lastPollMs = elapsed;
+    // Schedule next poll (chain immediately after completion)
+    if (_ghPollTimer) clearTimeout(_ghPollTimer);
+    _ghPollTimer = setTimeout(function() { pollMessages(); }, 200);
     if (err) { updateChatStatus(); return; }
-    if (!remote) { _ghRemoteCount = 0; updateChatStatus(); return; }
+    if (!data) { _ghRemoteCount = 0; updateChatStatus(); return; }
+    _ghLastSha = data.sha;
+    var remote = [];
+    try { remote = JSON.parse(b64decode(data.content)); } catch(e) {}
     remote.sort(function(a,b) { return a.created - b.created; });
     _ghRemoteCount = remote.length;
     var local = getMessagesLocal();
