@@ -1665,7 +1665,18 @@ function ghRawGet(cb) {
     Android.ghRawGetAsync('data/messages.json', id);
     return;
   }
-  // XHR fallback
+  // Fall back to API GET if raw bridge not available (old APK)
+  if (window.Android && typeof window.Android.ghGetAsync === 'function') {
+    var apiId = 'g' + (++_ghCbId);
+    _ghCallbacks[apiId] = {cb: function(err, data) {
+      if (err) { cb(err); return; }
+      if (!data) { cb(null, null); return; }
+      try { cb(null, JSON.parse(b64decode(data.content))); } catch(e) { cb(e.message); }
+    }, isPut: false};
+    Android.ghGetAsync('data/messages.json', apiId);
+    return;
+  }
+  // XHR fallback (last resort)
   var rawUrl = 'https://raw.githubusercontent.com/' + window._ghDefaults.repo + '/' + window._ghDefaults.branch + '/data/messages.json';
   var xhr = new XMLHttpRequest();
   xhr.open('GET', rawUrl + '?_=' + Date.now(), true);
