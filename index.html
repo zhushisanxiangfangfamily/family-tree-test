@@ -3051,25 +3051,32 @@ function syncMusicState() {
 }
 var _musicGestureDone = false;
 function tryPlayAudio(a) {
-  if (!a || !a.paused) return;
+  if (!a) return;
+  // Try autoplay first (works on desktop, rarely on mobile)
   a.play().then(function() {
     _musicGestureDone = true;
   }).catch(function() {
-    // iOS blocks autoplay — wait for first user touch
-    if (!_musicGestureDone) {
-      document.addEventListener('touchstart', function resume() {
-        a.play().catch(function(){});
-        _musicGestureDone = true;
-        document.removeEventListener('touchstart', resume);
-      }, {once: true});
-      document.addEventListener('click', function resume() {
-        a.play().catch(function(){});
-        _musicGestureDone = true;
-        document.removeEventListener('click', resume);
-      }, {once: true});
-    }
+    // iOS/mobile blocks autoplay — wait for first user touch
   });
 }
+// Register gesture listeners immediately, not just on play failure
+function _setupMusicGesture() {
+  if (_musicGestureDone) return;
+  function resume() {
+    if (_musicGestureDone) return;
+    _musicGestureDone = true;
+    var a = ensureHtmlAudio();
+    var encodedUrl = a.getAttribute('data-src') || '';
+    if (encodedUrl && a.getAttribute('src') !== encodedUrl) {
+      a.src = encodedUrl;
+    }
+    a.load();
+    a.play().catch(function(){});
+  }
+  document.addEventListener('touchstart', resume, {once: true});
+  document.addEventListener('click', resume, {once: true});
+}
+_setupMusicGesture();
 function toggleMusic() {
   var cfg = JSON.parse(localStorage.getItem('ft_config')||'{}');
   cfg.musicEnabled = cfg.musicEnabled === false ? true : false;
