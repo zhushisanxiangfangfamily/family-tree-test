@@ -1766,7 +1766,7 @@ function ghApiPut(path, content, sha, cb) {
   }
   // XHR fallback
   var xhr = new XMLHttpRequest();
-  xhr.open('PUT', 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/' + path + '&_=' + Date.now(), true);
+  xhr.open('PUT', 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/' + path + '?_=' + Date.now(), true);
   xhr.setRequestHeader('Authorization', 'token ' + ghToken());
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
   xhr.setRequestHeader('Content-Type', 'application/json');
