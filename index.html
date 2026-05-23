@@ -4910,7 +4910,7 @@ function checkBirthdays() {
           memberId: p.id,
           memberName: p.name,
           age: age,
-          text: '🎂 ' + p.name + ' 今天' + ageText + '生日！🎉',
+          text: '🍜🥚 ' + p.name + ' 今天' + ageText + '生日！🎉',
           created: Date.now(),
           read: false
         });
@@ -5658,7 +5658,7 @@ function sendBirthdayLetter() {
 
   // Auto-send to group chat (not saved to mailbox — mailbox is for system notifications)
   var toNames = _bdayPeople.map(function(p) { return p.name; }).join('、');
-  var chatText = '🎂 祝' + toNames + '生日快乐！\n' + text;
+  var chatText = '🍜🥚 祝' + toNames + '生日快乐！\n' + text;
   var msg = {
     id: Date.now(),
     fromMemberId: user.memberId,
@@ -5689,7 +5689,7 @@ if ('serviceWorker' in navigator) {
 
 <div class="bday-overlay" id="bday-overlay" style="display:none">
   <div class="bday-card">
-    <div class="bday-icon">🎂</div>
+    <div class="bday-icon">🍜🥚</div>
     <div class="bday-title">🎉 生日快乐！</div>
     <div class="bday-names-area" id="bday-names-area"></div>
     <textarea class="bday-msg" id="bday-msg" placeholder="写下你的生日祝福...💌"></textarea>
