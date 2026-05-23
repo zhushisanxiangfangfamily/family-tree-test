@@ -1709,9 +1709,19 @@ function pollMessages() {
 }
 
 var _saveStartTime = 0;
+var _syncState = ''; // '', 'saving', 'synced', 'error'
+var _syncStateTimer = 0;
+function setSyncState(s) {
+  _syncState = s;
+  updateChatStatus();
+  if (_syncStateTimer) clearTimeout(_syncStateTimer);
+  if (s === 'synced') {
+    _syncStateTimer = setTimeout(function() { _syncState = ''; updateChatStatus(); }, 5000);
+  }
+}
 function saveMessageToGithub(msg, retryCount) {
   retryCount = retryCount || 0;
-  if (retryCount === 0) { _saveStartTime = Date.now(); showToast('⏳ 同步中...', 'info'); }
+  if (retryCount === 0) { _saveStartTime = Date.now(); setSyncState('saving'); }
 
   // Fast path: use cached SHA to skip GET, saving one round trip
   // Fall back to GET+PUT on 409 conflict or if cache is stale
@@ -1725,19 +1735,18 @@ function saveMessageToGithub(msg, retryCount) {
     ghApiPut('data/messages.json', content, _ghLastSha, function(err2, putData) {
       if (!err2) {
         _ghLastSha = putData.content.sha;
-        var totalSec = ((Date.now() - _saveStartTime) / 1000).toFixed(1);
-        showToast('✅ 已同步 (' + totalSec + 's)', 'success');
+        setSyncState('synced');
         _messagesCache = existing;
         try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
         updateChatBadge();
         renderChatMessages();
-        updateChatStatus();
       } else if (err2 === 'status 409') {
         // Conflict — fall back to full GET+PUT
         saveMessageToGithub(msg, 1);
       } else if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        setSyncState('error');
         showToast('⚠️ 已存本地 (PUT失败:' + err2 + ')', 'warning');
         fallbackSaveLocal(msg);
       }
@@ -1751,6 +1760,7 @@ function saveMessageToGithub(msg, retryCount) {
       if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        setSyncState('error');
         showToast('⚠️ 已存本地 (GET失败:' + err + ')', 'warning');
         fallbackSaveLocal(msg);
       }
@@ -1770,18 +1780,17 @@ function saveMessageToGithub(msg, retryCount) {
     ghApiPut('data/messages.json', content, sha, function(err2, putData) {
       if (!err2) {
         _ghLastSha = putData.content.sha;
-        var totalSec = ((Date.now() - _saveStartTime) / 1000).toFixed(1);
-        showToast('✅ 已同步 (' + totalSec + 's)', 'success');
+        setSyncState('synced');
         _messagesCache = existing;
         try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
         updateChatBadge();
         renderChatMessages();
-        updateChatStatus();
       } else if (err2 === 'status 409' && retryCount < 3) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 400);
       } else if (retryCount < 2) {
         setTimeout(function() { saveMessageToGithub(msg, retryCount + 1); }, 3000);
       } else {
+        setSyncState('error');
         showToast('⚠️ 已存本地 (PUT失败:' + err2 + ')', 'warning');
         fallbackSaveLocal(msg);
       }
@@ -4860,12 +4869,12 @@ function sendVoiceMessage(base64, duration, mimeType) {
     scrollChatToBottom();
   } catch(e) {}
 
-  showToast('⏳ 上传语音中...', 'info');
+  setSyncState('saving');
 
   // Upload audio to separate file, then save message reference
   ghApiPut(voiceFile, base64, '', function(err, data) {
     if (!err) {
-      showToast('✅ 语音已发送 (' + duration + '″)', 'success');
+      setSyncState('synced');
       // Save message to messages.json (without audioBase64, only voiceFile ref)
       saveMsgRefToGithub(msg);
     } else {
@@ -4887,30 +4896,10 @@ function sendVoiceMessage(base64, duration, mimeType) {
 }
 
 function saveMsgRefToGithub(msg) {
-  // Save the voice message (with voiceFile ref, no audioBase64) to messages.json
+  // Save voice message reference (no audioBase64) — delegate to main save
   var cleanMsg = {};
   for (var k in msg) { if (k !== 'audioBase64') cleanMsg[k] = msg[k]; }
-  // Merge into messages.json via read-modify-write
-  ghApiGet(function(err, data) {
-    var existing = [], sha = null;
-    if (data && !err) {
-      sha = data.sha;
-      try { existing = JSON.parse(b64decode(data.content)); } catch(e) {}
-    }
-    if (!existing.some(function(m) { return m.id === cleanMsg.id; })) {
-      existing.push(cleanMsg);
-    }
-    if (existing.length > 500) existing = existing.slice(-500);
-    var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
-    ghApiPut('data/messages.json', content, sha, function(err2, putData) {
-      if (!err2) {
-        _ghLastSha = putData.content.sha;
-        _messagesCache = existing;
-        try { localStorage.setItem('ft_chat_messages', JSON.stringify(existing)); } catch(ex) {}
-        updateChatBadge();
-      }
-    });
-  });
+  saveMessageToGithub(cleanMsg);
 }
 
 function sendChatMessage() {
@@ -5006,7 +4995,11 @@ function updateChatStatus() {
     var localCount = 0;
     try { localCount = JSON.parse(localStorage.getItem('ft_chat_messages') || '[]').length; } catch(e) {}
     var timing = _lastPollMs ? ' · ' + _lastPollMs + 'ms' : '';
-    el.textContent = (_ghReady?'🟢':'🔴') + ' 云端' + _ghRemoteCount + ' · 本地' + localCount + ' · 轮询#' + _ghPollCount + timing;
+    var sync = '';
+    if (_syncState === 'saving') sync = ' · ⏳';
+    else if (_syncState === 'synced') sync = ' · ✅';
+    else if (_syncState === 'error') sync = ' · ⚠️';
+    el.textContent = (_ghReady?'🟢':'🔴') + ' 云端' + _ghRemoteCount + ' · 本地' + localCount + ' · 轮询#' + _ghPollCount + timing + sync;
   } else {
     el.textContent = '⚡ 本地模式';
   }
