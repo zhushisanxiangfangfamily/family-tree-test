@@ -5195,6 +5195,8 @@ function closeMailboxPanel() {
   if (overlay) overlay.style.display = 'none';
 }
 
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
 function getBirthdayLetters() {
   try { return JSON.parse(localStorage.getItem('ft_birthday_letters') || '[]'); } catch(e) { return []; }
 }
