@@ -720,12 +720,13 @@ footer{display:none}
     var params = new URLSearchParams(location.search);
     if (params.get('key') === PASS) {
       sessionStorage.setItem(STORAGE_KEY, '1');
+      localStorage.setItem(STORAGE_KEY, '1');
       params.delete('key');
       var newUrl = location.pathname + (params.toString() ? '?' + params.toString() : '');
       history.replaceState(null, '', newUrl);
       return true;
     }
-    return sessionStorage.getItem(STORAGE_KEY) === '1';
+    return sessionStorage.getItem(STORAGE_KEY) === '1' || localStorage.getItem(STORAGE_KEY) === '1';
   }
 
   if (isUnlocked()) {
@@ -771,6 +772,7 @@ footer{display:none}
     if (code.length === 4) {
       if (code === PASS) {
         sessionStorage.setItem(STORAGE_KEY, '1');
+        localStorage.setItem(STORAGE_KEY, '1');
         document.getElementById('lock-overlay').classList.add('hidden');
       } else {
         shake();
