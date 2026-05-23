@@ -3029,7 +3029,7 @@ function syncMusicState() {
   if (window.Android) Android.debug('syncMusicState: musicEnabled=' + cfg.musicEnabled + ' musicUrl=' + (cfg.musicUrl || '(none)'));
   if (cfg.musicEnabled !== false) {
     if (btn) { btn.classList.remove('off'); btn.textContent = '🎵'; }
-    var rawUrl = cfg.musicUrl||'';
+    var rawUrl = cfg.musicUrl || 'https://zhushisanxiangfangfamily.github.io/family-tree-test/明镜菩提.m4a';
     if (window.Android) {
       Android.playMusic(rawUrl);
     } else {
