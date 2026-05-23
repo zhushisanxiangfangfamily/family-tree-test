@@ -3028,15 +3028,17 @@ function syncMusicState() {
   var btn = document.getElementById('music-btn');
   if (cfg.musicEnabled !== false) {
     if (btn) { btn.classList.remove('off'); btn.textContent = '🎵'; }
+    var rawUrl = cfg.musicUrl||'';
+    var encodedUrl = rawUrl ? encodeURI(rawUrl) : '';
     if (window.Android) {
-      Android.playMusic(cfg.musicUrl||'');
+      Android.playMusic(encodedUrl);
     } else {
       var a = ensureHtmlAudio();
-      var targetUrl = cfg.musicUrl||'';
-      if (a.src !== targetUrl && !a.src.endsWith(targetUrl)) {
-        a.src = targetUrl;
+      if (a.getAttribute('data-src') !== encodedUrl) {
+        a.setAttribute('data-src', encodedUrl);
+        a.src = encodedUrl;
       }
-      if (a.paused) { a.play().catch(function(){}); }
+      tryPlayAudio(a);
     }
   } else {
     if (btn) { btn.classList.add('off'); btn.textContent = '🔇'; }
@@ -3046,6 +3048,27 @@ function syncMusicState() {
       var a = ensureHtmlAudio(); a.pause();
     }
   }
+}
+var _musicGestureDone = false;
+function tryPlayAudio(a) {
+  if (!a || !a.paused) return;
+  a.play().then(function() {
+    _musicGestureDone = true;
+  }).catch(function() {
+    // iOS blocks autoplay — wait for first user touch
+    if (!_musicGestureDone) {
+      document.addEventListener('touchstart', function resume() {
+        a.play().catch(function(){});
+        _musicGestureDone = true;
+        document.removeEventListener('touchstart', resume);
+      }, {once: true});
+      document.addEventListener('click', function resume() {
+        a.play().catch(function(){});
+        _musicGestureDone = true;
+        document.removeEventListener('click', resume);
+      }, {once: true});
+    }
+  });
 }
 function toggleMusic() {
   var cfg = JSON.parse(localStorage.getItem('ft_config')||'{}');
