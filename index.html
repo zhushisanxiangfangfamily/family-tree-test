@@ -558,6 +558,13 @@ footer{display:none}
 .chat-mic-btn:disabled{background:#f5f5f5;color:#ccc;cursor:not-allowed}
 .chat-mic-btn.recording{background:#ff4444;color:#fff;animation:mic-pulse .8s infinite}
 @keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,.5)}50%{box-shadow:0 0 0 10px rgba(255,68,68,0)}}
+.mention-popup{display:none;flex-direction:column;background:#fff;border-top:1px solid #e8e8e8;max-height:260px;flex-shrink:0;overflow:hidden}
+.mention-popup-search{padding:10px 14px;border:none;border-bottom:1px solid #eee;font-size:.85rem;outline:none;font-family:inherit;flex-shrink:0}
+.mention-popup-list{flex:1;overflow-y:auto;padding:4px 0}
+.mention-popup-item{padding:10px 16px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;gap:8px}
+.mention-popup-item:active,.mention-popup-item.active{background:#f0f7ff}
+.mention-avatar{width:32px;height:32px;border-radius:50%;background:#4A90D9;color:#fff;display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0}
+.mention-popup-empty{padding:16px;text-align:center;color:#999;font-size:.8rem}
 .chat-voice-player{display:inline-flex;align-items:center;gap:6px;min-width:140px;max-width:220px;height:34px}
 .chat-voice-player .voice-play-btn{width:30px;height:30px;border-radius:50%;border:none;background:#4A90D9;color:#fff;font-size:.75rem;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .chat-voice-player .voice-play-btn.playing{background:#ff6b6b}
@@ -2345,6 +2352,10 @@ function loginWithPin(memberId, pin) {
   updateUserUI();
   closeLoginPanel();
   uploadSession(user);
+  // Notify Android of current user for background mention notifications
+  if (window.Android && typeof window.Android.setCurrentUser === 'function') {
+    Android.setCurrentUser('' + user.memberId, user.memberName);
+  }
   showToast('欢迎，' + user.memberName + '！', 'success');
 }
 
@@ -2366,6 +2377,10 @@ function logoutUser(showGate) {
   updateUserUI();
   // Clear session from GitHub
   if (oldUser) { clearSessionOnGitHub(oldUser); }
+  // Notify Android to stop mention service
+  if (window.Android && typeof window.Android.clearCurrentUser === 'function') {
+    Android.clearCurrentUser();
+  }
   // Show mandatory login gate after logout
   if (showGate !== false) {
     var overlay = document.getElementById('login-overlay');
@@ -5542,6 +5557,196 @@ function saveMsgRefToGithub(msg) {
   saveMessageToGithub(cleanMsg);
 }
 
+function extractMentions(text) {
+  var accounts = getAccounts();
+  var nameMap = {};
+  accounts.forEach(function(a) { nameMap[a.memberName] = a.memberId; });
+  var seen = {};
+  var result = [];
+  var matches = text.match(/@(\S+)/g);
+  if (!matches) return result;
+  matches.forEach(function(m) {
+    var name = m.substring(1);
+    var memberId = nameMap[name];
+    if (memberId && !seen[memberId]) {
+      seen[memberId] = true;
+      result.push({ memberId: memberId, memberName: name });
+    }
+  });
+  return result;
+}
+
+function saveMentionsToGithub(mentions) {
+  if (!mentions || mentions.length === 0) return;
+  ghApiGet('data/mentions.json', function(err, data) {
+    var existing = [];
+    var sha = null;
+    if (data) {
+      sha = data.sha;
+      try { existing = JSON.parse(b64decode(data.content)); } catch(e) {}
+    } else if (err) {
+      // Network error — retry once
+      setTimeout(function() { saveMentionsToGithub(mentions); }, 3000);
+      return;
+    }
+    for (var i = 0; i < mentions.length; i++) {
+      existing.push(mentions[i]);
+    }
+    if (existing.length > 200) existing = existing.slice(-200);
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(existing))));
+    ghApiPut('data/mentions.json', content, sha, function(err2, putData) {
+      if (err2) {
+        setTimeout(function() {
+          ghApiPut('data/mentions.json', content, sha, function() {});
+        }, 3000);
+      }
+    });
+  });
+}
+
+// @mention popup state
+var _mentionActive = false;
+var _mentionSearchText = '';
+var _mentionActiveIdx = -1;
+
+function onChatInputKey(e) {
+  if (e.key === 'Enter') {
+    if (_mentionActive) {
+      e.preventDefault();
+      var items = document.querySelectorAll('#mention-popup-list .mention-popup-item');
+      var idx = _mentionActiveIdx >= 0 ? _mentionActiveIdx : 0;
+      if (items.length > 0 && idx < items.length) {
+        items[Math.max(0, idx)].click();
+      }
+      return false;
+    }
+    sendChatMessage();
+  }
+  if (e.key === 'Escape' && _mentionActive) {
+    closeMentionPopup();
+    return false;
+  }
+  if (_mentionActive && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+    e.preventDefault();
+    var list = document.getElementById('mention-popup-list');
+    var all = list.querySelectorAll('.mention-popup-item');
+    if (e.key === 'ArrowDown') {
+      _mentionActiveIdx = Math.min(_mentionActiveIdx + 1, all.length - 1);
+    } else {
+      _mentionActiveIdx = Math.max(_mentionActiveIdx - 1, 0);
+    }
+    all.forEach(function(el, i) { el.classList.toggle('active', i === _mentionActiveIdx); });
+    return false;
+  }
+}
+
+function onChatInputType(e) {
+  var input = e.target;
+  var val = input.value;
+  var cursorPos = input.selectionStart;
+  var textBeforeCursor = val.substring(0, cursorPos);
+  var lastAtPos = textBeforeCursor.lastIndexOf('@');
+
+  if (lastAtPos >= 0) {
+    var beforeChar = lastAtPos === 0 ? ' ' : textBeforeCursor[lastAtPos - 1];
+    if (beforeChar === ' ' || beforeChar === '，' || beforeChar === '。' || lastAtPos === 0) {
+      var afterAt = textBeforeCursor.substring(lastAtPos + 1);
+      if (!/[\s一-龥，。、；：！？]/.test(afterAt)) {
+        _mentionSearchText = afterAt;
+        _mentionActive = true;
+        _mentionActiveIdx = -1;
+        showMentionPopup();
+        document.getElementById('mention-popup-search').value = afterAt;
+        filterMentionList();
+        return;
+      }
+    }
+  }
+  closeMentionPopup();
+}
+
+function showMentionPopup() {
+  var popup = document.getElementById('mention-popup');
+  if (popup) { popup.style.display = 'flex'; }
+}
+
+function closeMentionPopup() {
+  var popup = document.getElementById('mention-popup');
+  if (popup) { popup.style.display = 'none'; }
+  _mentionActive = false;
+  _mentionActiveIdx = -1;
+}
+
+function filterMentionList() {
+  var search = document.getElementById('mention-popup-search');
+  var list = document.getElementById('mention-popup-list');
+  var searchText = (search ? search.value : _mentionSearchText || '').toLowerCase();
+  var accounts = getAccounts();
+  var filtered = accounts.filter(function(a) {
+    return !searchText || a.memberName.toLowerCase().indexOf(searchText) >= 0;
+  });
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="mention-popup-empty">未找到匹配成员</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(function(a, i) {
+    return '<div class="mention-popup-item' + (i === _mentionActiveIdx ? ' active' : '') + '" data-member-id="' + a.memberId + '" data-member-name="' + a.memberName + '" onclick="selectMention(this)">' +
+      '<div class="mention-avatar">' + a.memberName[0] + '</div>' +
+      '<span>' + a.memberName + '</span>' +
+      '</div>';
+  }).join('');
+}
+
+function handleMentionKeyDown(e) {
+  if (e.key === 'Escape') {
+    closeMentionPopup();
+    document.getElementById('chat-input').focus();
+    return false;
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    var all = document.querySelectorAll('#mention-popup-list .mention-popup-item');
+    _mentionActiveIdx = Math.min(_mentionActiveIdx + 1, all.length - 1);
+    all.forEach(function(el, i) { el.classList.toggle('active', i === _mentionActiveIdx); });
+    return false;
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _mentionActiveIdx = Math.max(_mentionActiveIdx - 1, 0);
+    var allUp = document.querySelectorAll('#mention-popup-list .mention-popup-item');
+    allUp.forEach(function(el, i) { el.classList.toggle('active', i === _mentionActiveIdx); });
+    return false;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    var items = document.querySelectorAll('#mention-popup-list .mention-popup-item');
+    var idx = _mentionActiveIdx >= 0 ? _mentionActiveIdx : 0;
+    if (items.length > 0 && idx < items.length) {
+      items[Math.max(0, idx)].click();
+    }
+    return false;
+  }
+}
+
+function selectMention(el) {
+  var memberId = el.getAttribute('data-member-id');
+  var memberName = el.getAttribute('data-member-name');
+  var input = document.getElementById('chat-input');
+  var val = input.value;
+  var cursorPos = input.selectionStart;
+  var textBeforeCursor = val.substring(0, cursorPos);
+  var lastAtPos = textBeforeCursor.lastIndexOf('@');
+  var beforeAt = val.substring(0, lastAtPos);
+  var afterCursor = val.substring(cursorPos);
+  input.value = beforeAt + '@' + memberName + ' ' + afterCursor;
+  closeMentionPopup();
+  input.focus();
+  var newPos = lastAtPos + memberName.length + 2;
+  input.setSelectionRange(newPos, newPos);
+}
+
 function sendChatMessage() {
   var user = getCurrentUser();
   if (!user) {
@@ -5574,6 +5779,18 @@ function sendChatMessage() {
     scrollChatToBottom();
     // Sync to GitHub
     saveMessageToGithub(msg);
+    // Save @mentions for background notifications
+    var mentions = extractMentions(text);
+    if (mentions.length > 0) {
+      for (var i = 0; i < mentions.length; i++) {
+        mentions[i].id = Date.now() + i;
+        mentions[i].fromMemberId = user.memberId;
+        mentions[i].fromMemberName = user.memberName;
+        mentions[i].text = text;
+        mentions[i].created = Date.now();
+      }
+      saveMentionsToGithub(mentions);
+    }
   } catch(e) {
     // Fallback: direct save in case of any error
     var fallback = [];
@@ -6051,8 +6268,12 @@ if ('serviceWorker' in navigator) {
 生日快乐🎂！！！</div><div class="chat-time">17:54</div></div><div class="chat-msg-row own"><div class="chat-bubble own"><div class="chat-voice-player" data-msg-id="1779531314311"><button class="voice-play-btn" id="vpb-1779531314311" onclick="toggleVoicePlay('va1779531314311','vpb-1779531314311')">▶</button><div class="voice-wave"><span class="voice-wave-bar" style="height:15px"></span></div><span class="voice-dur">1″</span><audio id="va1779531314311" src="https://raw.githubusercontent.com/zhushisanxiangfangfamily/family-tree-test/master/data/voice/1779531314311.webm" preload="none" style="display:none" onended="onVoiceEnded('vpb-1779531314311')" onerror="onVoiceError('vpb-1779531314311')"></audio></div></div><div class="chat-time">18:15</div></div><div class="chat-msg-row other"><div class="chat-sender">朱鸿</div><div class="chat-bubble other">睡觉睡觉</div><div class="chat-time">18:33</div></div><div class="chat-msg-row other"><div class="chat-sender">朱鸿</div><div class="chat-bubble other">佛法</div><div class="chat-time">18:43</div></div><div class="chat-msg-row own"><div class="chat-bubble own">顶焦度计</div><div class="chat-time">19:46</div></div><div class="chat-date-sep">2026-05-24</div><div class="chat-msg-row other"><div class="chat-sender">朱鸿</div><div class="chat-bubble other">🍜🥚🥚 祝苏燕生日快乐！
 生日快乐，万事如意</div><div class="chat-time">02:06</div></div></div>
   <div class="chat-login-hint" id="chat-login-hint">请先登录后再发言</div>
+  <div class="mention-popup" id="mention-popup">
+    <input class="mention-popup-search" id="mention-popup-search" placeholder="搜索成员..." onkeydown="return handleMentionKeyDown(event)" oninput="filterMentionList()">
+    <div class="mention-popup-list" id="mention-popup-list"></div>
+  </div>
   <div class="chat-input-bar">
-    <input class="chat-input" id="chat-input" placeholder="输入消息..." onkeydown="if(event.key==='Enter')sendChatMessage()" disabled="">
+    <input class="chat-input" id="chat-input" placeholder="输入消息..." onkeydown="return onChatInputKey(event)" oninput="onChatInputType(event)" disabled="">
     <button class="chat-mic-btn" id="chat-mic-btn" onmousedown="startRecording(event)" onmouseup="stopRecording(event)" onmouseleave="stopRecording(event)" ontouchstart="startRecording(event)" ontouchend="stopRecording(event)" ontouchcancel="stopRecording(event)" disabled="">🎤</button>
     <button class="chat-send-btn" id="chat-send-btn" onclick="sendChatMessage()" disabled="">➤</button>
   </div>
