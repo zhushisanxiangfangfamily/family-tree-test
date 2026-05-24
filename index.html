@@ -1579,7 +1579,7 @@ function hashStr(s) {
 function loadData() {
   try {
     // Compute version from actual embedded data — any data change = new version = auto-clear
-    var dataVer = "v4_" + hashStr(JSON.stringify(defaultMembers));
+    var dataVer = "v5_" + hashStr(JSON.stringify(defaultMembers));
     var storedVer = localStorage.getItem('ft_data_version');
     if (storedVer !== dataVer) {
       localStorage.removeItem('ft_members');
