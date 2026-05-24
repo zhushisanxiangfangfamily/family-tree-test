@@ -3491,6 +3491,16 @@ function applyConfig() {
     if (!config.bgStories && cc.bgStories) config.bgStories = cc.bgStories;
     if (!config.bgHero && cc.bgHero) config.bgHero = cc.bgHero;
   }
+  // Sync GitHub config to _ghDefaults so API calls work on web
+  if (config.ghRepo && !window._ghDefaults.repo) window._ghDefaults.repo = config.ghRepo;
+  if (config.ghBranch && !window._ghDefaults.branch) window._ghDefaults.branch = config.ghBranch;
+  if (config.ghToken && !window._ghDefaults.tk1) {
+    var tk = config.ghToken;
+    window._ghDefaults.p1 = tk.substring(0, 4) || '';
+    window._ghDefaults.p2 = tk.substring(4, 8) || '';
+    window._ghDefaults.tk1 = tk.substring(8, tk.length - 8) || '';
+    window._ghDefaults.tk2 = tk.substring(tk.length - 8) || '';
+  }
   if(config.title) { document.getElementById('hero-title').textContent=config.title; document.getElementById('nav-title').textContent='🏮 '+config.title; document.title=config.title; }
   if(config.sub) document.getElementById('hero-sub').textContent=config.sub;
   if(config.year) document.getElementById('stat-year').textContent=config.year;
