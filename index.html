@@ -1825,8 +1825,8 @@ window._ghCb = function(callbackId) {
       entry.cb(resp.error || ('status ' + resp.status));
     }
   } else {
-    if (resp.ok && resp.status === 200) {
-      entry.cb(null, resp.data);
+    if (resp.ok && (resp.status === 200 || resp.status === 304)) {
+      entry.cb(null, resp.status === 304 ? _ghCachedResp : resp.data);
     } else if (resp.status === 404) {
       entry.cb(null, null);
     } else {
