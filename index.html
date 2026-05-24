@@ -5794,7 +5794,8 @@ function sendChatMessage() {
           created: Date.now()
         });
       }
-      saveMentionsToGithub(mentionRecords);
+      // Only save mentions if running on Android (not on web)
+      if (window.Android) saveMentionsToGithub(mentionRecords);
     }
   } catch(e) {
     // Fallback: direct save in case of any error
