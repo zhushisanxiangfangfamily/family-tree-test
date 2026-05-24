@@ -1666,6 +1666,16 @@ function getMessagesUrl() {
   return 'https://api.github.com/repos/' + d.repo + '/contents/data/messages.json?ref=' + d.branch;
 }
 
+function getSessionsUrl() {
+  var d = window._ghDefaults;
+  return 'https://api.github.com/repos/' + d.repo + '/contents/data/sessions.json?ref=' + d.branch;
+}
+
+function getSessionsRawUrl() {
+  var d = window._ghDefaults;
+  return 'https://raw.githubusercontent.com/' + d.repo + '/' + d.branch + '/data/sessions.json';
+}
+
 var _lastRemoteMsgTime = 0;
 var _adaptivePollTimer = null;
 
@@ -1691,7 +1701,121 @@ function initGitHubSync() {
   scheduleNextPoll();
   // Background flush for unsent messages every 30s
   setInterval(flushUnsentIfNeeded, 30000);
+  // Session polling: check every 30s if still the active session
+  syncSessions();
+  setInterval(syncSessions, 30000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
+}
+
+// ===== SESSION TRACKING (single-session enforcement) =====
+var _sessionSha = null;
+
+function uploadSession(user) {
+  if (!_ghReady || !ghToken()) return;
+  var sessionsUrl = getSessionsUrl();
+  var now = Date.now();
+  // Fetch current sessions, update, then PUT
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', sessionsUrl + '&_=' + now, true);
+  xhr.setRequestHeader('Authorization', 'token ' + ghToken());
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.timeout = 10000;
+  xhr.onload = function() {
+    var sessions = {};
+    var sha = null;
+    if (xhr.status === 200) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        sha = resp.sha;
+        var content = b64decode(resp.content);
+        sessions = JSON.parse(content);
+      } catch(e) {}
+    }
+    _sessionSha = sha;
+    // Write this member's session
+    sessions[String(user.memberId)] = {
+      sessionId: user.sessionId,
+      memberName: user.memberName,
+      timestamp: now
+    };
+    var putXhr = new XMLHttpRequest();
+    putXhr.open('PUT', 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/data/sessions.json?_=' + now, true);
+    putXhr.setRequestHeader('Authorization', 'token ' + ghToken());
+    putXhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+    putXhr.setRequestHeader('Content-Type', 'application/json');
+    putXhr.timeout = 10000;
+    putXhr.onload = function() {
+      if (putXhr.status === 200 || putXhr.status === 201) {
+        try {
+          var r = JSON.parse(putXhr.responseText);
+          _sessionSha = r.content && r.content.sha;
+        } catch(e) {}
+      }
+    };
+    var body = {message:'session', content:btoa(unescape(encodeURIComponent(JSON.stringify(sessions)))), branch:window._ghDefaults.branch};
+    if (sha) body.sha = sha;
+    putXhr.send(JSON.stringify(body));
+  };
+  xhr.send();
+}
+
+function clearSessionOnGitHub(user) {
+  if (!_ghReady || !ghToken()) return;
+  var sessionsUrl = getSessionsUrl();
+  var now = Date.now();
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', sessionsUrl + '&_=' + now, true);
+  xhr.setRequestHeader('Authorization', 'token ' + ghToken());
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.timeout = 10000;
+  xhr.onload = function() {
+    var sessions = {};
+    var sha = null;
+    if (xhr.status === 200) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        sha = resp.sha;
+        var content = b64decode(resp.content);
+        sessions = JSON.parse(content);
+      } catch(e) {}
+    }
+    // Remove this member's session
+    delete sessions[String(user.memberId)];
+    var putXhr = new XMLHttpRequest();
+    putXhr.open('PUT', 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/data/sessions.json?_=' + now, true);
+    putXhr.setRequestHeader('Authorization', 'token ' + ghToken());
+    putXhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+    putXhr.setRequestHeader('Content-Type', 'application/json');
+    putXhr.timeout = 10000;
+    var body = {message:'session', content:btoa(unescape(encodeURIComponent(JSON.stringify(sessions)))), branch:window._ghDefaults.branch};
+    if (sha) body.sha = sha;
+    putXhr.send(JSON.stringify(body));
+  };
+  xhr.send();
+}
+
+function syncSessions() {
+  var currentUser = getCurrentUser();
+  if (!currentUser || !currentUser.sessionId) return;
+  if (!_ghReady || !ghToken()) return;
+  var xhr = new XMLHttpRequest();
+  var rawUrl = getSessionsRawUrl() + '?_=' + Date.now();
+  xhr.open('GET', rawUrl, true);
+  xhr.timeout = 8000;
+  xhr.onload = function() {
+    if (xhr.status !== 200) return;
+    try {
+      var sessions = JSON.parse(xhr.responseText);
+      var entry = sessions[String(currentUser.memberId)];
+      if (entry && entry.sessionId !== currentUser.sessionId) {
+        // Another device logged in with this account - force logout
+        logoutUser();
+        showToast('⚠️ 该账号已在另一台设备登录，当前会话已退出', 'warning');
+      }
+    } catch(e) {}
+  };
+  xhr.onerror = function() {};
+  xhr.send();
 }
 
 // Callback registry for async native bridge calls
@@ -2177,16 +2301,19 @@ function loginWithPin(memberId, pin) {
     document.getElementById('login-error').textContent = 'PIN码错误';
     return;
   }
+  var sessionId = 's' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
   var user = {
     memberId: acct.memberId,
     memberName: acct.memberName,
-    isAdmin: !!acct.isAdmin
+    isAdmin: !!acct.isAdmin,
+    sessionId: sessionId
   };
   localStorage.setItem('ft_user', JSON.stringify(user));
   var overlay = document.getElementById('login-overlay');
   if (overlay) { overlay.removeAttribute('data-mandatory'); overlay.classList.remove('mandatory'); overlay.style.display = 'none'; overlay.classList.remove('open'); }
   updateUserUI();
   closeLoginPanel();
+  uploadSession(user);
   showToast('欢迎，' + user.memberName + '！', 'success');
 }
 
@@ -2202,21 +2329,26 @@ function doLoginWithPin() {
   loginWithPin(memberId, pin);
 }
 
-function logoutUser() {
+function logoutUser(showGate) {
+  var oldUser = getCurrentUser();
   localStorage.removeItem('ft_user');
   updateUserUI();
+  // Clear session from GitHub
+  if (oldUser) { clearSessionOnGitHub(oldUser); }
   // Show mandatory login gate after logout
-  var overlay = document.getElementById('login-overlay');
-  if (overlay) {
-    overlay.setAttribute('data-mandatory', '1');
-    overlay.classList.add('mandatory');
-    overlay.style.display = 'flex';
-    overlay.classList.add('open');
-    document.getElementById('login-search').value = '';
-    document.getElementById('login-pin').value = '';
-    document.getElementById('login-error').textContent = '';
-    overlay.removeAttribute('data-selected-id');
-    renderLoginMemberList();
+  if (showGate !== false) {
+    var overlay = document.getElementById('login-overlay');
+    if (overlay) {
+      overlay.setAttribute('data-mandatory', '1');
+      overlay.classList.add('mandatory');
+      overlay.style.display = 'flex';
+      overlay.classList.add('open');
+      document.getElementById('login-search').value = '';
+      document.getElementById('login-pin').value = '';
+      document.getElementById('login-error').textContent = '';
+      overlay.removeAttribute('data-selected-id');
+      renderLoginMemberList();
+    }
   }
   showToast('已退出登录');
 }
