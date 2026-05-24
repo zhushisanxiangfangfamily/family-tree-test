@@ -1710,7 +1710,7 @@ document.addEventListener('visibilitychange', function() {
       pollMessages();
       scheduleNextPoll();
       syncSessions();
-      _sessionInterval = setInterval(syncSessions, 30000);
+      _sessionInterval = setInterval(syncSessions, 15000);
     }
   }
 });
@@ -1789,13 +1789,33 @@ function clearSessionOnGitHub(user) {
   });
 }
 
+var _lastSessionApiCheck = 0;
+
 function syncSessions() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
   if (!_ghReady) return;
-  // Use raw CDN to avoid consuming API quota (small cache delay acceptable)
+
+  var now = Date.now();
+  // Every 2 min: API check (accurate, uses quota)
+  if (now - _lastSessionApiCheck > 120000) {
+    _lastSessionApiCheck = now;
+    ghApiGet('data/sessions.json', function(err, data) {
+      if (err || !data || !data.content) return;
+      try {
+        var sessions = JSON.parse(b64decode(data.content));
+        var entry = sessions[String(currentUser.memberId)];
+        if (entry && entry.sessionId !== currentUser.sessionId) {
+          logoutUser();
+          showToast('⚠️ 该账号已在另一台设备登录，当前会话已退出', 'warning');
+        }
+      } catch(e) {}
+    });
+    return;
+  }
+  // CDN fast check between API calls (no quota, 15s interval)
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', getSessionsRawUrl() + '?_=' + Date.now(), true);
+  xhr.open('GET', getSessionsRawUrl() + '?_=' + now, true);
   xhr.timeout = 8000;
   xhr.onload = function() {
     if (xhr.status !== 200) return;
