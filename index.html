@@ -1688,9 +1688,48 @@ function getAdaptiveInterval() {
 
 function scheduleNextPoll() {
   if (_adaptivePollTimer) clearTimeout(_adaptivePollTimer);
-  if (!_ghReady) return;
+  if (!_ghReady || !_pageVisible) return;
   _adaptivePollTimer = setTimeout(function() { pollMessages(); }, getAdaptiveInterval());
 }
+
+var _pageVisible = true;
+var _flushInterval = null;
+var _sessionInterval = null;
+
+// Pause polling when app goes to background to save API quota
+document.addEventListener('visibilitychange', function() {
+  _pageVisible = !document.hidden;
+  if (!_pageVisible) {
+    // Background: cancel all polling
+    if (_adaptivePollTimer) { clearTimeout(_adaptivePollTimer); _adaptivePollTimer = null; }
+    if (_sessionInterval) { clearInterval(_sessionInterval); _sessionInterval = null; }
+  } else {
+    // Foreground: immediately poll and resume
+    if (_ghReady) {
+      _lastRemoteMsgTime = Date.now(); // reset to active mode
+      pollMessages();
+      scheduleNextPoll();
+      syncSessions();
+      _sessionInterval = setInterval(syncSessions, 30000);
+    }
+  }
+});
+// Also handle pagehide/pageshow for older browsers
+window.addEventListener('pagehide', function() {
+  _pageVisible = false;
+  if (_adaptivePollTimer) { clearTimeout(_adaptivePollTimer); _adaptivePollTimer = null; }
+  if (_sessionInterval) { clearInterval(_sessionInterval); _sessionInterval = null; }
+});
+window.addEventListener('pageshow', function() {
+  _pageVisible = true;
+  if (_ghReady) {
+    _lastRemoteMsgTime = Date.now();
+    pollMessages();
+    scheduleNextPoll();
+    syncSessions();
+    _sessionInterval = setInterval(syncSessions, 30000);
+  }
+});
 
 function initGitHubSync() {
   _ghReady = true;
@@ -1700,10 +1739,10 @@ function initGitHubSync() {
   _lastRemoteMsgTime = Date.now(); // start in active mode
   scheduleNextPoll();
   // Background flush for unsent messages every 30s
-  setInterval(flushUnsentIfNeeded, 30000);
+  _flushInterval = setInterval(flushUnsentIfNeeded, 30000);
   // Session polling: check every 30s if still the active session
   syncSessions();
-  setInterval(syncSessions, 30000);
+  _sessionInterval = setInterval(syncSessions, 30000);
   syncAccountsFromGitHub().then(function() { renderAccountList(); });
 }
 
@@ -1909,7 +1948,7 @@ function ghApiPut(path, content, sha, cb) {
 var _lastPollStart = 0;
 var _lastPollMs = 0;
 function pollMessages() {
-  if (!_ghReady) return;
+  if (!_ghReady || !_pageVisible) return;
   _ghPollCount++;
   _lastPollStart = Date.now();
 
