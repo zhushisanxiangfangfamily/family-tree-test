@@ -1589,9 +1589,22 @@ function loadData() {
     var dataVer = "v6_" + hashStr(JSON.stringify(defaultMembers) + JSON.stringify(window.__CUSTOM_CONFIG__||{}));
     var storedVer = localStorage.getItem('ft_data_version');
     if (storedVer !== dataVer) {
+      // Preserve user settings (selfId, accounts) across version clear
+      var oldConfig = null;
+      try { oldConfig = JSON.parse(localStorage.getItem('ft_config')); } catch(e) {}
+      var preserved = {};
+      if (oldConfig && oldConfig.selfId) preserved.selfId = oldConfig.selfId;
+      if (oldConfig && oldConfig.accounts) preserved.accounts = oldConfig.accounts;
       localStorage.removeItem('ft_members');
       localStorage.removeItem('ft_stories');
       localStorage.removeItem('ft_config');
+      // Restore preserved settings into a new ft_config
+      if (preserved.selfId || preserved.accounts) {
+        var newCfg = (window.__CUSTOM_CONFIG__ && typeof window.__CUSTOM_CONFIG__ === 'object') ? JSON.parse(JSON.stringify(window.__CUSTOM_CONFIG__)) : {};
+        if (preserved.selfId) newCfg.selfId = preserved.selfId;
+        if (preserved.accounts) newCfg.accounts = preserved.accounts;
+        localStorage.setItem('ft_config', JSON.stringify(newCfg));
+      }
     }
     localStorage.setItem('ft_data_version', dataVer);
     const m = localStorage.getItem('ft_members');
