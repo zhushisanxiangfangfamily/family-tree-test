@@ -1754,24 +1754,18 @@ function syncSessions() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
   if (!_ghReady) return;
-  // Use raw CDN for session check (no auth needed, small cache delay acceptable)
-  var xhr = new XMLHttpRequest();
-  var rawUrl = getSessionsRawUrl() + '?_=' + Date.now();
-  xhr.open('GET', rawUrl, true);
-  xhr.timeout = 8000;
-  xhr.onload = function() {
-    if (xhr.status !== 200) return;
+  // Use GitHub API directly (not CDN) to get latest sessions immediately
+  ghApiGet('data/sessions.json', function(err, data) {
+    if (err || !data || !data.content) return;
     try {
-      var sessions = JSON.parse(xhr.responseText);
+      var sessions = JSON.parse(b64decode(data.content));
       var entry = sessions[String(currentUser.memberId)];
       if (entry && entry.sessionId !== currentUser.sessionId) {
         logoutUser();
         showToast('⚠️ 该账号已在另一台设备登录，当前会话已退出', 'warning');
       }
     } catch(e) {}
-  };
-  xhr.onerror = function() {};
-  xhr.send();
+  });
 }
 
 // Callback registry for async native bridge calls
