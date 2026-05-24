@@ -5559,20 +5559,24 @@ function saveMsgRefToGithub(msg) {
 
 function extractMentions(text) {
   var accounts = getAccounts();
-  var nameMap = {};
-  accounts.forEach(function(a) { nameMap[a.memberName] = a.memberId; });
+  var sorted = accounts.slice().sort(function(a, b) {
+    return b.memberName.length - a.memberName.length;
+  });
   var seen = {};
   var result = [];
-  var matches = text.match(/@(\S+)/g);
-  if (!matches) return result;
-  matches.forEach(function(m) {
-    var name = m.substring(1);
-    var memberId = nameMap[name];
-    if (memberId && !seen[memberId]) {
-      seen[memberId] = true;
-      result.push({ memberId: memberId, memberName: name });
+  for (var i = 0; i < sorted.length; i++) {
+    var name = sorted[i].memberName;
+    var searchStr = '@' + name;
+    var idx = text.indexOf(searchStr);
+    if (idx === -1) continue;
+    // Only block if followed by ASCII letter/digit (e.g. @zhangsan123)
+    var charAfter = text.charAt(idx + searchStr.length);
+    if (charAfter !== '' && /[a-zA-Z0-9]/.test(charAfter)) continue;
+    if (!seen[sorted[i].memberId]) {
+      seen[sorted[i].memberId] = true;
+      result.push({ memberId: sorted[i].memberId, memberName: name });
     }
-  });
+  }
   return result;
 }
 
