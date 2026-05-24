@@ -1586,7 +1586,7 @@ function hashStr(s) {
 function loadData() {
   try {
     // Compute version from actual embedded data — any data change = new version = auto-clear
-    var dataVer = "v5_" + hashStr(JSON.stringify(defaultMembers));
+    var dataVer = "v6_" + hashStr(JSON.stringify(defaultMembers) + JSON.stringify(window.__CUSTOM_CONFIG__||{}));
     var storedVer = localStorage.getItem('ft_data_version');
     if (storedVer !== dataVer) {
       localStorage.removeItem('ft_members');
@@ -3190,43 +3190,16 @@ function updateSelfDisplay() {
 function applyPageBg(pageId, bgUrl, forceClear) {
   var el = document.getElementById('page-'+pageId);
   if (!el) return;
-  var styleEl = document.getElementById('export-bg-styles');
-  if (styleEl && !forceClear) {
-    // Update the existing CSS rule in the export stylesheet (avoids element-level repaint)
-    var sheet = styleEl.sheet;
-    if (!sheet) { styleEl.textContent = styleEl.textContent; sheet = styleEl.sheet; }
-    var ruleIndex = -1;
-    var selector = '#page-' + pageId;
-    try {
-      for (var i = 0; i < sheet.cssRules.length; i++) {
-        if (sheet.cssRules[i].selectorText === selector) { ruleIndex = i; break; }
-      }
-    } catch(e) {}
-    if (ruleIndex >= 0 && bgUrl) {
-      sheet.deleteRule(ruleIndex);
-      sheet.insertRule(selector + '{background-image:url('+bgUrl+');background-size:cover;background-position:center}', ruleIndex);
-    } else if (bgUrl) {
-      sheet.insertRule(selector + '{background-image:url('+bgUrl+');background-size:cover;background-position:center}', sheet.cssRules.length);
-    }
-    // Also set element style as fallback (for dynamic page switching scenarios)
-    if (bgUrl) {
-      el.style.backgroundImage = 'url('+bgUrl+')';
-      el.style.backgroundSize = 'cover';
-      el.style.backgroundPosition = 'center';
-    }
-  } else {
-    // No export CSS — apply directly (live edit / forceClear mode)
-    if (bgUrl) {
-      el.style.backgroundImage = 'url('+bgUrl+')';
-      el.style.backgroundSize = 'cover';
-      el.style.backgroundPosition = 'center';
-      el.style.backgroundAttachment = 'fixed';
-    } else if (forceClear) {
-      el.style.backgroundImage = '';
-      el.style.backgroundSize = '';
-      el.style.backgroundPosition = '';
-      el.style.backgroundAttachment = '';
-    }
+  if (bgUrl) {
+    el.style.backgroundImage = 'url('+bgUrl+')';
+    el.style.backgroundSize = 'cover';
+    el.style.backgroundPosition = 'center';
+    el.style.backgroundAttachment = 'fixed';
+  } else if (forceClear) {
+    el.style.backgroundImage = '';
+    el.style.backgroundSize = '';
+    el.style.backgroundPosition = '';
+    el.style.backgroundAttachment = '';
   }
 }
 function applyHeroBg(bgUrl, forceClear) {
