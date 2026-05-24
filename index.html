@@ -624,6 +624,10 @@ footer{display:none}
   display: none; align-items: center; justify-content: center;
 }
 .login-overlay.open { display: flex; }
+.login-overlay.mandatory {
+  background: rgba(0,0,0,.75); z-index: 9999;
+}
+.login-overlay.mandatory .login-cancel-btn { display: none; }
 .login-card {
   background: #fff; border-radius: 16px; padding: 24px;
   max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto;
@@ -961,8 +965,8 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
       <div class="account-form">
         <div class="form-group"><label class="form-label">选择成员</label>
           <select class="form-select" id="acct-member"><option value="">请选择...</option><option value="2">朱幼 (第1世)</option><option value="16">潘玉成 (第2世)</option><option value="17">潘建忠 (第3世)</option><option value="18">吴碧珠 (第2世)</option><option value="19">曾雨 (第4世)</option><option value="24">曾心岚 (第5世)</option><option value="35">潘建仁 (第3世)</option><option value="38">潘雅婷 (第4世)</option><option value="43">黄陈萍 (第4世)</option><option value="44">朱玉水 (第2世)</option><option value="45">朱建华 (第3世)</option><option value="46">朱建明 (第3世)</option><option value="47">吕素玉 (第2世)</option><option value="48">朱建霞 (第3世)</option><option value="49">蔡氏 (第1世)</option><option value="50">朱霖 (第4世)</option><option value="54">柯文治 (第1世)</option><option value="55">朱玉森 (第2世)</option><option value="56">潘元英 (第2世)</option><option value="57">朱玉平 (第2世)</option><option value="58">黄春烟 (第2世)</option><option value="59">朱玉明 (第2世)</option><option value="60">马彩霞 (第2世)</option><option value="61">曾文云 (第3世)</option><option value="62">蒋剑 (第4世)</option><option value="63">陈妍 (第3世)</option><option value="64">潘建升 (第3世)</option><option value="65">李玉琴 (第3世)</option><option value="66">潘雪冰 (第3世)</option><option value="67">陈潘毅 (第4世)</option><option value="68">陈书扬 (第5世)</option><option value="69">李潘昱 (第4世)</option><option value="70">袁媛 (第4世)</option><option value="71">李子安 (第5世)</option><option value="72">黄美明 (第3世)</option><option value="73">朱庆兰 (第3世)</option><option value="74">翁祖贵 (第3世)</option><option value="75">朱建红 (第3世)</option><option value="76">郑君方 (第3世)</option><option value="77">朱杰 (第4世)</option><option value="79">朱玲玲 (第4世)</option><option value="80">黄晓辉 (第4世)</option><option value="81">朱梓浩 (第5世)</option><option value="82">朱颖 (第4世)</option><option value="83">肖麟琴 (第4世)</option><option value="84">朱骁宸 (第5世)</option><option value="85">朱骁茗 (第5世)</option><option value="86">朱建光 (第3世)</option><option value="87">朱丽琼 (第3世)</option><option value="88">朱振 (第4世)</option><option value="89">钱墨兰 (第4世)</option><option value="90">朱莉 (第4世)</option><option value="91">朱沐宸 (第5世)</option><option value="92">朱沐言 (第5世)</option><option value="93">朱建萍 (第3世)</option><option value="94">吴捷清 (第3世)</option><option value="95">朱建莲 (第3世)</option><option value="96">吴秋辉 (第3世)</option><option value="97">朱建伟 (第3世)</option><option value="98">黄亦霞 (第3世)</option><option value="99">朱锐 (第4世)</option><option value="100">朱彦溪 (第4世)</option><option value="101">朱建芳 (第3世)</option><option value="102">方荣贵 (第3世)</option><option value="103">朱建斌 (第3世)</option><option value="104">朱雪琼 (第3世)</option><option value="105">朱建武（现用名朱建雄） (第3世)</option><option value="106">张建英 (第3世)</option><option value="107">朱俊 (第4世)</option><option value="108">朱鸿 (第4世)</option><option value="109">朱真 (第4世)</option><option value="110">马盘社 (第4世)</option><option value="111">朱羽萌 (第5世)</option><option value="112">朱羽森 (第5世)</option><option value="113">朱雪 (第4世)</option><option value="114">陈海鹏 (第4世)</option><option value="115">朱建雄（（现用名朱建武） (第3世)</option><option value="116">朱亚妹 (第3世)</option><option value="117">朱烨 (第4世)</option><option value="118">朱鑫 (第4世)</option><option value="119">吴宇翔 (第4世)</option><option value="120">吴雨 (第4世)</option><option value="121">吴宇婷 (第4世)</option><option value="122">吴思靖 (第4世)</option><option value="123">王建新 (第4世)</option><option value="124">吴思思 (第4世)</option><option value="125">谢轶翔 (第4世)</option><option value="126">黄瀚泽 (第5世)</option><option value="127">黄瀚宇 (第5世)</option><option value="128">郑凌杰 (第4世)</option><option value="129">郑梦航 (第4世)</option><option value="130">郑凌伟 (第4世)</option><option value="131">郑沐瑶 (第5世)</option><option value="132">蒋子诚 (第5世)</option><option value="133">潘子琪 (第5世)</option><option value="134">翁晶 (第4世)</option><option value="135">陈晓滨 (第4世)</option><option value="136">陈逸涵 (第5世)</option><option value="138">陈逸彤 (第5世)</option><option value="139">朱萍萍 (第4世)</option><option value="140">高鹏飞 (第4世)</option><option value="141">高鸿 (第5世)</option><option value="142">高雯 (第5世)</option><option value="143">高奕辰 (第5世)</option><option value="144">翁进棚 (第4世)</option><option value="145">张元珠 (第4世)</option><option value="146">翁智阳 (第5世)</option><option value="147">翁泽屿 (第5世)</option><option value="148">嘟嘟 (第6世)</option><option value="149">方航 (第4世)</option><option value="150">薛锦芳 (第4世)</option><option value="151">方书铭 (第5世)</option><option value="152">方书宏 (第5世)</option><option value="153">方源 (第4世)</option><option value="154">颜凡 (第4世)</option><option value="155">颜宸奕 (第5世)</option><option value="156">方楠 (第4世)</option><option value="157">方小淇 (第5世)</option><option value="158">朱秀玉 (第2世)</option><option value="159">苏元贵 (第2世)</option><option value="160">苏清秀 (第3世)</option><option value="161">李风玉 (第3世)</option><option value="162">苏清风 (第4世)</option><option value="163">苏燕 (第4世)</option></select></div>
-        <div class="form-group"><label class="form-label">4位PIN</label>
-          <input class="form-input" id="acct-pin" type="text" maxlength="4" placeholder="如: 1234" style="width:80px"></div>
+        <div class="form-group"><label class="form-label">PIN密码</label>
+          <input class="form-input" id="acct-pin" type="text" maxlength="4" placeholder="如: 1234 或 abcd" style="width:160px"></div>
         <div class="form-group"><label class="form-label">管理员</label>
           <select class="form-select" id="acct-admin"><option value="0">否</option><option value="1">是</option></select></div>
         <button class="btn btn-primary" onclick="createAccount()" style="flex:0 0 auto">＋ 创建</button>
@@ -2092,7 +2096,7 @@ function createAccount() {
   var isAdm = document.getElementById('acct-admin').value === '1';
 
   if (!mId) { showToast('请选择成员', 'error'); return; }
-  if (!/^\d{4}$/.test(pin)) { showToast('PIN必须是4位数字', 'error'); return; }
+  if (!/^[a-zA-Z0-9]{4}$/.test(pin)) { showToast('PIN必须是4位字母或数字', 'error'); return; }
 
   var member = members.find(function(m) { return m.id === mId; });
   if (!member) { showToast('成员不存在', 'error'); return; }
@@ -2179,6 +2183,8 @@ function loginWithPin(memberId, pin) {
     isAdmin: !!acct.isAdmin
   };
   localStorage.setItem('ft_user', JSON.stringify(user));
+  var overlay = document.getElementById('login-overlay');
+  if (overlay) { overlay.removeAttribute('data-mandatory'); overlay.classList.remove('mandatory'); overlay.style.display = 'none'; overlay.classList.remove('open'); }
   updateUserUI();
   closeLoginPanel();
   showToast('欢迎，' + user.memberName + '！', 'success');
@@ -2190,7 +2196,7 @@ function doLoginWithPin() {
   var errEl = document.getElementById('login-error');
 
   if (!memberId) { errEl.textContent = '请先选择你的身份'; return; }
-  if (!/^\d{4}$/.test(pin)) { errEl.textContent = '请输入4位数字PIN码'; return; }
+  if (!/^[a-zA-Z0-9]{4}$/.test(pin)) { errEl.textContent = '请输入4位PIN码（字母或数字）'; return; }
 
   errEl.textContent = '';
   loginWithPin(memberId, pin);
@@ -2199,21 +2205,55 @@ function doLoginWithPin() {
 function logoutUser() {
   localStorage.removeItem('ft_user');
   updateUserUI();
+  // Show mandatory login gate after logout
+  var overlay = document.getElementById('login-overlay');
+  if (overlay) {
+    overlay.setAttribute('data-mandatory', '1');
+    overlay.classList.add('mandatory');
+    overlay.style.display = 'flex';
+    overlay.classList.add('open');
+    document.getElementById('login-search').value = '';
+    document.getElementById('login-pin').value = '';
+    document.getElementById('login-error').textContent = '';
+    overlay.removeAttribute('data-selected-id');
+    renderLoginMemberList();
+  }
   showToast('已退出登录');
 }
 
 function updateUserUI() {
   var user = getCurrentUser();
   var btn = document.getElementById('user-btn');
-  if (!btn) return;
-  if (user) {
-    btn.textContent = user.memberName;
-    btn.classList.add('logged-in');
-    btn.setAttribute('title', '点击退出登录');
-  } else {
-    btn.textContent = '登录';
-    btn.classList.remove('logged-in');
-    btn.setAttribute('title', '家族成员登录');
+  if (btn) {
+    if (user) {
+      btn.textContent = user.memberName;
+      btn.classList.add('logged-in');
+      btn.setAttribute('title', '点击退出登录');
+    } else {
+      btn.textContent = '登录';
+      btn.classList.remove('logged-in');
+      btn.setAttribute('title', '家族成员登录');
+    }
+  }
+  // Show mandatory login gate if not logged in
+  var overlay = document.getElementById('login-overlay');
+  if (overlay) {
+    if (!user) {
+      overlay.setAttribute('data-mandatory', '1');
+      overlay.classList.add('mandatory');
+      overlay.style.display = 'flex';
+      overlay.classList.add('open');
+      document.getElementById('login-search').value = '';
+      document.getElementById('login-pin').value = '';
+      document.getElementById('login-error').textContent = '';
+      overlay.removeAttribute('data-selected-id');
+      renderLoginMemberList();
+    } else {
+      overlay.removeAttribute('data-mandatory');
+      overlay.classList.remove('mandatory');
+      overlay.style.display = 'none';
+      overlay.classList.remove('open');
+    }
   }
   updateChatInputState();
 }
@@ -2234,6 +2274,9 @@ function toggleLoginPanel() {
       return;
     }
     overlay.style.display = 'flex';
+    overlay.classList.add('open');
+    overlay.removeAttribute('data-mandatory');
+    overlay.classList.remove('mandatory');
     document.getElementById('login-search').value = '';
     document.getElementById('login-pin').value = '';
     document.getElementById('login-error').textContent = '';
@@ -2244,7 +2287,10 @@ function toggleLoginPanel() {
 
 function closeLoginPanel() {
   var overlay = document.getElementById('login-overlay');
-  if (overlay) overlay.style.display = 'none';
+  if (!overlay) return;
+  if (overlay.getAttribute('data-mandatory') === '1') return;
+  overlay.style.display = 'none';
+  overlay.classList.remove('open');
 }
 
 function onLoginSearch(query) {
@@ -2314,14 +2360,36 @@ function injectPageBgStyles(html, configObj) {
   return html;
 }
 
+function stripBase64FromData(arr) {
+  // Remove base64 data: URLs from member/album/story photos in exported data
+  for (var i = 0; i < arr.length; i++) {
+    var item = arr[i];
+    if (item.photo && item.photo.indexOf('data:') === 0) delete item.photo;
+    if (item.album) {
+      for (var j = 0; j < item.album.length; j++) {
+        if (item.album[j].url && item.album[j].url.indexOf('data:') === 0) delete item.album[j].url;
+      }
+    }
+  }
+}
+
 function exportFullHTML() {
   try {
     var m = localStorage.getItem('ft_members');
     var s = localStorage.getItem('ft_stories');
     var c = localStorage.getItem('ft_config') || (window.__CUSTOM_CONFIG__ ? JSON.stringify(window.__CUSTOM_CONFIG__) : null);
-    var membersJSON = m || JSON.stringify(defaultMembers);
-    var storiesJSON = s || JSON.stringify(defaultStories);
-    var configJSON = c || '{}';
+    // Strip base64 photos from members/stories before export
+    var membersArr = m ? JSON.parse(m) : JSON.parse(JSON.stringify(defaultMembers));
+    var storiesArr = s ? JSON.parse(s) : JSON.parse(JSON.stringify(defaultStories));
+    stripBase64FromData(membersArr);
+    stripBase64FromData(storiesArr);
+    var membersJSON = JSON.stringify(membersArr);
+    var storiesJSON = JSON.stringify(storiesArr);
+    // Strip large bg* fields from exported config to avoid re-embedding base64
+    var configObj = c ? JSON.parse(c) : {};
+    var bgKeys = ['bgHome','bgTree','bgMembers','bgStories','bgHero'];
+    for (var k = 0; k < bgKeys.length; k++) { delete configObj[bgKeys[k]]; }
+    var configJSON = JSON.stringify(configObj);
     // Use in-memory splashSlides (loaded from IDB on startup) for export
     var splashJSON = JSON.stringify(splashSlides.length ? splashSlides : DEFAULT_SPLASH);
 
@@ -5834,10 +5902,10 @@ if ('serviceWorker' in navigator) {
     <input class="form-input" id="login-search" placeholder="🔍 搜索你的名字..." oninput="onLoginSearch(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box;margin-bottom:8px;padding:10px 14px;border-radius:10px;border:2px solid #ddd;font-size:.9rem">
     <div class="login-member-list" id="login-member-list" style="max-height:160px"></div>
     <div class="login-pin-row">
-      <input class="login-pin-input" id="login-pin" type="password" maxlength="4" placeholder="PIN码" onkeydown="if(event.key==='Enter')doLoginWithPin()">
+      <input class="login-pin-input" id="login-pin" type="password" maxlength="4" placeholder="PIN码（字母或数字）" onkeydown="if(event.key==='Enter')doLoginWithPin()">
     </div>
     <div class="login-actions">
-      <button class="btn btn-ghost" onclick="closeLoginPanel()">取消</button>
+      <button class="btn btn-ghost login-cancel-btn" onclick="closeLoginPanel()">取消</button>
       <button class="btn btn-primary" onclick="doLoginWithPin()">登录</button>
     </div>
     <div class="login-error" id="login-error"></div>
