@@ -1547,12 +1547,13 @@ document.addEventListener('keydown', e => {
     splashSlides = await loadSplashSlidesFromIDB();
   }
   buildSplashSlides();
-  // Always show splash on every open
   var splashEl = document.getElementById('splash');
-  splashEl.style.display = 'flex';
-  splashEl.classList.remove('fade-out');
-  if(localStorage.getItem('ft_splash_seen')) {
-    localStorage.removeItem('ft_splash_seen');
+  // Only show splash on first visit, skip on subsequent opens
+  if (localStorage.getItem('ft_splash_seen')) {
+    splashEl.style.display = 'none';
+  } else {
+    splashEl.style.display = 'flex';
+    splashEl.classList.remove('fade-out');
   }
 })();
 
