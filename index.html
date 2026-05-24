@@ -6225,6 +6225,23 @@ function sendBirthdayLetter() {
   renderChatMessages();
   saveMessageToGithub(msg);
 
+  // Notify birthday people via @mention
+  if (window.Android && _bdayPeople.length > 0) {
+    var mentionRecords = [];
+    for (var i = 0; i < _bdayPeople.length; i++) {
+      mentionRecords.push({
+        id: Date.now() + 100 + i,
+        fromMemberId: user.memberId,
+        fromMemberName: user.memberName,
+        toMemberId: _bdayPeople[i].id,
+        toMemberName: _bdayPeople[i].name,
+        text: '🍜🥚🥚 祝你生日快乐！🎉 ' + text,
+        created: Date.now()
+      });
+    }
+    saveMentionsToGithub(mentionRecords);
+  }
+
   closeBirthdayPopup();
   showToast('💌 祝福已发送到群聊', 'success');
 }
