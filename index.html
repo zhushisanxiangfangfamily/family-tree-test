@@ -4938,6 +4938,8 @@ document.addEventListener('keydown', e => {
 applyConfig();
 initGitHubSync();
 updateUserUI();
+// Re-check login gate after DOM fully loaded (overlay HTML may not exist yet at init)
+document.addEventListener('DOMContentLoaded', function() { updateUserUI(); });
 syncMusicState();
 // Force-hide admin panels + reset admin button on load (export may have baked in admin state)
 document.querySelectorAll('.admin-panel').forEach(function(p){ p.classList.remove('visible'); });
