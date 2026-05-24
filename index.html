@@ -3184,6 +3184,8 @@ function applyPageBg(pageId, bgUrl, forceClear) {
   var el = document.getElementById('page-'+pageId);
   if (!el) return;
   if (bgUrl) {
+    // Export has bg already in inline style — only apply via JS if not already set
+    if (el.style.backgroundImage && el.style.backgroundImage !== 'none') return;
     el.style.backgroundImage = 'url('+bgUrl+')';
     el.style.backgroundSize = 'cover';
     el.style.backgroundPosition = 'center';
