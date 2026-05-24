@@ -832,10 +832,10 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
   <div class="header-actions">
     <button class="splash-replay visible" id="splash-replay-btn" onclick="replaySplash()" title="重温家族引导">⟳</button>
     <button class="theme-btn" id="theme-btn" onclick="toggleThemePanel()" title="切换主题">🎨</button>
-    <button class="self-badge" id="self-badge" onclick="clearSelf()" title="点击取消" style="display: inline-flex;">👤 我：朱玉森</button>
+    <button class="self-badge" id="self-badge" onclick="selectSelf()" title="设定自己" style="">👤 设定自己</button>
     <button class="music-btn off" id="music-btn" onclick="toggleMusic()" title="背景音乐">🔇</button>
     <button class="mail-btn" id="mail-btn" onclick="toggleChatPanel()" title="家族群聊">💬<span class="mail-badge show" id="mail-badge">99+</span></button>
-<button class="user-btn logged-in" id="user-btn" onclick="toggleLoginPanel()" title="点击退出登录">朱俊</button>
+<button class="user-btn" id="user-btn" onclick="toggleLoginPanel()" title="登录">登录</button>
 
     <button class="admin-badge" id="admin-btn" onclick="handleAdminBtn()" style="">管理员登录</button>
   </div>
