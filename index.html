@@ -1711,25 +1711,13 @@ function initGitHubSync() {
 var _sessionSha = null;
 
 function uploadSession(user) {
-  if (!_ghReady || !ghToken()) return;
-  var sessionsUrl = getSessionsUrl();
+  if (!_ghReady) return;
   var now = Date.now();
-  // Fetch current sessions, update, then PUT
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', sessionsUrl + '&_=' + now, true);
-  xhr.setRequestHeader('Authorization', 'token ' + ghToken());
-  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhr.timeout = 10000;
-  xhr.onload = function() {
+  ghApiGet('data/sessions.json', function(err, data) {
     var sessions = {};
     var sha = null;
-    if (xhr.status === 200) {
-      try {
-        var resp = JSON.parse(xhr.responseText);
-        sha = resp.sha;
-        var content = b64decode(resp.content);
-        sessions = JSON.parse(content);
-      } catch(e) {}
+    if (data && data.content) {
+      try { sha = data.sha; sessions = JSON.parse(b64decode(data.content)); } catch(e) {}
     }
     _sessionSha = sha;
     // Write this member's session
@@ -1738,81 +1726,45 @@ function uploadSession(user) {
       memberName: user.memberName,
       timestamp: now
     };
-    var putXhr = new XMLHttpRequest();
-    putXhr.open('PUT', 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/data/sessions.json?_=' + now, true);
-    putXhr.setRequestHeader('Authorization', 'token ' + ghToken());
-    putXhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-    putXhr.setRequestHeader('Content-Type', 'application/json');
-    putXhr.timeout = 10000;
-    putXhr.onload = function() {
-      if (putXhr.status === 200 || putXhr.status === 201) {
-        try {
-          var r = JSON.parse(putXhr.responseText);
-          _sessionSha = r.content && r.content.sha;
-        } catch(e) {}
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(sessions))));
+    ghApiPut('data/sessions.json', content, sha, function(err2, putData) {
+      if (!err2 && putData && putData.content) {
+        _sessionSha = putData.content.sha;
       }
-    };
-    var body = {message:'session', content:btoa(unescape(encodeURIComponent(JSON.stringify(sessions)))), branch:window._ghDefaults.branch};
-    if (sha) body.sha = sha;
-    putXhr.send(JSON.stringify(body));
-  };
-  xhr.send();
+    });
+  });
 }
 
 function clearSessionOnGitHub(user) {
-  if (!_ghReady || !ghToken()) return;
-  var sessionsUrl = getSessionsUrl();
-  var now = Date.now();
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', sessionsUrl + '&_=' + now, true);
-  xhr.setRequestHeader('Authorization', 'token ' + ghToken());
-  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhr.timeout = 10000;
-  xhr.onload = function() {
+  if (!_ghReady) return;
+  ghApiGet('data/sessions.json', function(err, data) {
     var sessions = {};
     var sha = null;
-    if (xhr.status === 200) {
-      try {
-        var resp = JSON.parse(xhr.responseText);
-        sha = resp.sha;
-        var content = b64decode(resp.content);
-        sessions = JSON.parse(content);
-      } catch(e) {}
+    if (data && data.content) {
+      try { sha = data.sha; sessions = JSON.parse(b64decode(data.content)); } catch(e) {}
     }
     // Remove this member's session
     delete sessions[String(user.memberId)];
-    var putXhr = new XMLHttpRequest();
-    putXhr.open('PUT', 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/data/sessions.json?_=' + now, true);
-    putXhr.setRequestHeader('Authorization', 'token ' + ghToken());
-    putXhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-    putXhr.setRequestHeader('Content-Type', 'application/json');
-    putXhr.timeout = 10000;
-    var body = {message:'session', content:btoa(unescape(encodeURIComponent(JSON.stringify(sessions)))), branch:window._ghDefaults.branch};
-    if (sha) body.sha = sha;
-    putXhr.send(JSON.stringify(body));
-  };
-  xhr.send();
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(sessions))));
+    ghApiPut('data/sessions.json', content, sha, function() {});
+  });
 }
 
 function syncSessions() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
   if (!_ghReady) return;
+  // Use raw CDN for session check (no auth needed, small cache delay acceptable)
   var xhr = new XMLHttpRequest();
-  // Use GitHub API (not raw CDN) to get latest sessions immediately
-  var apiUrl = getSessionsUrl() + '&_=' + Date.now();
-  xhr.open('GET', apiUrl, true);
-  xhr.setRequestHeader('Authorization', 'token ' + ghToken());
-  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhr.timeout = 10000;
+  var rawUrl = getSessionsRawUrl() + '?_=' + Date.now();
+  xhr.open('GET', rawUrl, true);
+  xhr.timeout = 8000;
   xhr.onload = function() {
     if (xhr.status !== 200) return;
     try {
-      var resp = JSON.parse(xhr.responseText);
-      var sessions = JSON.parse(b64decode(resp.content));
+      var sessions = JSON.parse(xhr.responseText);
       var entry = sessions[String(currentUser.memberId)];
       if (entry && entry.sessionId !== currentUser.sessionId) {
-        // Another device logged in with this account - force logout
         logoutUser();
         showToast('⚠️ 该账号已在另一台设备登录，当前会话已退出', 'warning');
       }
@@ -1852,16 +1804,19 @@ window._ghCb = function(callbackId) {
 };
 
 // Wrapper: GitHub API GET via Android native bridge (async, non-blocking) or XHR fallback
-function ghApiGet(cb) {
+// Optional path parameter: ghApiGet('data/messages.json', cb) or ghApiGet(cb) defaults to messages
+function ghApiGet(path, cb) {
+  if (!cb) { cb = path; path = 'data/messages.json'; }
   if (window.Android && typeof window.Android.ghGetAsync === 'function') {
     var id = 'g' + (++_ghCbId);
     _ghCallbacks[id] = {cb: cb, isPut: false};
-    Android.ghGetAsync('data/messages.json', id);
+    Android.ghGetAsync(path, id);
     return;
   }
   // XHR fallback
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', getMessagesUrl() + '&_=' + Date.now(), true);
+  var apiUrl = 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/' + path + '?ref=' + (window._ghDefaults.branch||'master') + '&_=' + Date.now();
+  xhr.open('GET', apiUrl, true);
   xhr.setRequestHeader('Authorization', 'token ' + ghToken());
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
   xhr.timeout = 15000;
