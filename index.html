@@ -1971,11 +1971,14 @@ function pollMessages() {
     // Check session: if another device took over, force logout
     var currentUser = getCurrentUser();
     if (currentUser && currentUser.sessionId) {
-      var entry = _remoteSessions[String(currentUser.memberId)];
-      if (entry && entry.sessionId !== currentUser.sessionId) {
-        logoutUser();
-        showToast('⚠️ 该账号已在另一台设备登录，当前会话已退出', 'warning');
-        return;
+      // Grace period: skip session check for first 5s after login to let uploadSession complete
+      if (!currentUser.createdAt || Date.now() - currentUser.createdAt > 5000) {
+        var entry = _remoteSessions[String(currentUser.memberId)];
+        if (entry && entry.sessionId !== currentUser.sessionId) {
+          logoutUser();
+          showToast('⚠️ 该账号已在另一台设备登录，当前会话已退出', 'warning');
+          return;
+        }
       }
     }
     remote.sort(function(a,b) { return a.created - b.created; });
@@ -2324,7 +2327,8 @@ function loginWithPin(memberId, pin) {
     memberId: acct.memberId,
     memberName: acct.memberName,
     isAdmin: !!acct.isAdmin,
-    sessionId: sessionId
+    sessionId: sessionId,
+    createdAt: Date.now()
   };
   localStorage.setItem('ft_user', JSON.stringify(user));
   var overlay = document.getElementById('login-overlay');
