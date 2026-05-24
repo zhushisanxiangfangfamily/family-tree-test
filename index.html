@@ -5782,14 +5782,19 @@ function sendChatMessage() {
     // Save @mentions for background notifications
     var mentions = extractMentions(text);
     if (mentions.length > 0) {
+      var mentionRecords = [];
       for (var i = 0; i < mentions.length; i++) {
-        mentions[i].id = Date.now() + i;
-        mentions[i].fromMemberId = user.memberId;
-        mentions[i].fromMemberName = user.memberName;
-        mentions[i].text = text;
-        mentions[i].created = Date.now();
+        mentionRecords.push({
+          id: Date.now() + i,
+          fromMemberId: user.memberId,
+          fromMemberName: user.memberName,
+          toMemberId: mentions[i].memberId,
+          toMemberName: mentions[i].memberName,
+          text: text,
+          created: Date.now()
+        });
       }
-      saveMentionsToGithub(mentions);
+      saveMentionsToGithub(mentionRecords);
     }
   } catch(e) {
     // Fallback: direct save in case of any error
