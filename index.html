@@ -1802,6 +1802,39 @@ function clearSessionOnGitHub(user) {
   });
 }
 
+// Write session to data/sessions.json for background service detection
+function saveSessionToGithub(memberId, sessionId) {
+  if (!_ghReady) return;
+  var key = String(memberId);
+  ghApiGet('data/sessions.json', function(err, data) {
+    var sessions = {};
+    var sha = null;
+    if (data && data.content) {
+      sha = data.sha;
+      try { sessions = JSON.parse(b64decode(data.content)); } catch(e) {}
+    } else if (err) return;
+    sessions[key] = sessionId;
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(sessions))));
+    ghApiPut('data/sessions.json', content, sha, function() {});
+  });
+}
+
+function clearSessionFromGithub(memberId) {
+  if (!_ghReady) return;
+  var key = String(memberId);
+  ghApiGet('data/sessions.json', function(err, data) {
+    var sessions = {};
+    var sha = null;
+    if (data && data.content) {
+      sha = data.sha;
+      try { sessions = JSON.parse(b64decode(data.content)); } catch(e) {}
+    } else if (err) return;
+    delete sessions[key];
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(sessions))));
+    ghApiPut('data/sessions.json', content, sha, function() {});
+  });
+}
+
 // Sync: just refresh session timestamp every 2min (detection is in pollMessages)
 var _lastSessionApiCheck = 0;
 function syncSessions() {
@@ -2352,9 +2385,11 @@ function loginWithPin(memberId, pin) {
   updateUserUI();
   closeLoginPanel();
   uploadSession(user);
+  // Write session for background service kick detection
+  saveSessionToGithub(user.memberId, user.sessionId);
   // Notify Android of current user for background mention notifications
   if (window.Android && typeof window.Android.setCurrentUser === 'function') {
-    Android.setCurrentUser('' + user.memberId, user.memberName);
+    Android.setCurrentUser('' + user.memberId, user.memberName, user.sessionId);
   }
   showToast('欢迎，' + user.memberName + '！', 'success');
 }
@@ -2376,7 +2411,7 @@ function logoutUser(showGate) {
   localStorage.removeItem('ft_user');
   updateUserUI();
   // Clear session from GitHub
-  if (oldUser) { clearSessionOnGitHub(oldUser); }
+  if (oldUser) { clearSessionOnGitHub(oldUser); clearSessionFromGithub(oldUser.memberId); }
   // Notify Android to stop mention service
   if (window.Android && typeof window.Android.clearCurrentUser === 'function') {
     Android.clearCurrentUser();
