@@ -1650,6 +1650,8 @@ var _ghPollCount = 0;
 var _ghRemoteCount = 0;
 var _ghPollTimer = null;
 var _ghLastSha = null;
+var _ghEtag = null;
+var _ghCachedResp = null;
 var _lastRenderedFingerprint = '';
 
 function ghToken() {
@@ -1845,14 +1847,20 @@ function ghApiGet(path, cb) {
   }
   // XHR fallback
   var xhr = new XMLHttpRequest();
-  var apiUrl = 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/' + path + '?ref=' + (window._ghDefaults.branch||'master') + '&_=' + Date.now();
+  var apiUrl = 'https://api.github.com/repos/' + window._ghDefaults.repo + '/contents/' + path + '?ref=' + (window._ghDefaults.branch||'master');
   xhr.open('GET', apiUrl, true);
   xhr.setRequestHeader('Authorization', 'token ' + ghToken());
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  if (_ghEtag) xhr.setRequestHeader('If-None-Match', _ghEtag);
   xhr.timeout = 15000;
   xhr.onload = function() {
     if (xhr.status === 200) {
-      try { cb(null, JSON.parse(xhr.responseText)); } catch(e) { cb(e.message); }
+      var etag = xhr.getResponseHeader('ETag');
+      if (etag) _ghEtag = etag;
+      try { var parsed = JSON.parse(xhr.responseText); _ghCachedResp = parsed; cb(null, parsed); } catch(e) { cb(e.message); }
+    } else if (xhr.status === 304) {
+      // 304 Not Modified — return cached (no rate-limit cost)
+      cb(null, _ghCachedResp);
     } else if (xhr.status === 404) {
       cb(null, null);
     } else {
@@ -1995,6 +2003,7 @@ function pollMessages() {
     local.forEach(function(m) { merged[m.id] = m; });
     remote.forEach(function(m) { merged[m.id] = m; });
     _messagesCache = Object.values(merged).sort(function(a,b) { return a.created - b.created; });
+    if (_messagesCache.length > 1000) _messagesCache = _messagesCache.slice(-1000);
     remote.forEach(function(m) { delete _failedMsgIds[m.id]; });
     if (Object.keys(_failedMsgIds).length === 0) _failedMsgIds = {};
     try { localStorage.setItem('ft_chat_messages', JSON.stringify(_messagesCache)); } catch(ex) {}
@@ -2027,7 +2036,7 @@ function saveMessageToGithub(msg, retryCount) {
     if (!existing.some(function(m) { return m.id === msg.id; })) {
       existing.push(msg);
     }
-    if (existing.length > 500) existing = existing.slice(-500);
+    if (existing.length > 1000) existing = existing.slice(-1000);
     // Strip audioBase64 from voice messages that have voiceFile (audio already uploaded)
     var cleaned = existing.map(function(m) {
       if (m.type === 'voice' && m.audioBase64 && m.voiceFile) {
@@ -2087,7 +2096,7 @@ function saveMessageToGithub(msg, retryCount) {
     if (!existing.some(function(m) { return m.id === msg.id; })) {
       existing.push(msg);
     }
-    if (existing.length > 500) existing = existing.slice(-500);
+    if (existing.length > 1000) existing = existing.slice(-1000);
     var content = btoa(unescape(encodeURIComponent(buildMessageFile(sessions, existing))));
 
     ghApiPut('data/messages.json', content, sha, function(err2, putData) {
