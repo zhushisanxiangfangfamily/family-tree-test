@@ -1797,15 +1797,19 @@ function clearSessionOnGitHub(user) {
 function syncSessions() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
-  if (!_ghReady || !ghToken()) return;
+  if (!_ghReady) return;
   var xhr = new XMLHttpRequest();
-  var rawUrl = getSessionsRawUrl() + '?_=' + Date.now();
-  xhr.open('GET', rawUrl, true);
-  xhr.timeout = 8000;
+  // Use GitHub API (not raw CDN) to get latest sessions immediately
+  var apiUrl = getSessionsUrl() + '&_=' + Date.now();
+  xhr.open('GET', apiUrl, true);
+  xhr.setRequestHeader('Authorization', 'token ' + ghToken());
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.timeout = 10000;
   xhr.onload = function() {
     if (xhr.status !== 200) return;
     try {
-      var sessions = JSON.parse(xhr.responseText);
+      var resp = JSON.parse(xhr.responseText);
+      var sessions = JSON.parse(b64decode(resp.content));
       var entry = sessions[String(currentUser.memberId)];
       if (entry && entry.sessionId !== currentUser.sessionId) {
         // Another device logged in with this account - force logout
