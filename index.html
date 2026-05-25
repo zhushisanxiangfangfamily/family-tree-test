@@ -1760,12 +1760,11 @@ function initGitHubSync() {
 // Sessions stored in data/sessions.json for cross-device enforcement
 // Checked by both Android MentionService and web setInterval
 
+var _webSessionCheckErrorShown = false;
 function checkWebSession() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
-  // Read messages.json — always up-to-date since all devices write to it
-  // Shares ETag with chat polling: 304 = no cost, 200 = fresh data
-  // Fallback: populate _ghDefaults from __CUSTOM_CONFIG__ if not already set
+  // Ensure _ghDefaults is populated for the API call
   if (!window._ghDefaults) window._ghDefaults = {};
   if (!window._ghDefaults.repo) {
     var cc = window.__CUSTOM_CONFIG__;
@@ -1773,7 +1772,11 @@ function checkWebSession() {
   }
   if (!window._ghDefaults.branch) window._ghDefaults.branch = 'master';
   ghApiGet('data/messages.json', function(err, data) {
-    if (err || !data || !data.content) return;
+    if (err) {
+      if (!_webSessionCheckErrorShown) { _webSessionCheckErrorShown = true; showToast('⚠️ 会话检查失败: ' + err, 'error'); }
+      return;
+    }
+    if (!data || !data.content) { console.log('checkWebSession: no data/content'); return; }
     try {
       var parsed = JSON.parse(b64decode(data.content));
       var sessions = (parsed && parsed._sessions) ? parsed._sessions : {};
@@ -1782,15 +1785,15 @@ function checkWebSession() {
         logoutUser();
         showToast('⚠️ 该账号已在另一设备登录，当前会话已退出', 'warning');
       }
-    } catch(e) {}
+    } catch(e) { console.log('checkWebSession: parse error', e); }
   });
 }
 
 // Start web session check — runs even in background (browser throttles to ~60s)
 var _webSessionCheckInterval = null;
 function startWebSessionCheck() {
+  checkWebSession(); // always check immediately on login
   if (_webSessionCheckInterval) return;
-  checkWebSession();
   _webSessionCheckInterval = setInterval(checkWebSession, 120000);
 }
 function stopWebSessionCheck() {
