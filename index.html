@@ -1760,39 +1760,50 @@ function initGitHubSync() {
 // Sessions stored in data/sessions.json for cross-device enforcement
 // Checked by both Android MentionService and web setInterval
 
-var _webSessionCheckErrorShown = false;
 function checkWebSession() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
-  // Use unauthenticated API call — no token dependency, 60 req/hr limit
-  // At 120s interval = 30 req/hr, well within limit
-  var apiUrl = 'https://api.github.com/repos/zhushisanxiangfangfamily/family-tree-test/contents/data/messages.json?ref=master';
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', apiUrl, true);
-  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-  xhr.timeout = 15000;
-  xhr.onload = function() {
-    if (xhr.status === 403 && !_webSessionCheckErrorShown) {
-      // 403 = rate limited; show once
-      _webSessionCheckErrorShown = true;
-      showToast('⚠️ 会话检查被限流，请稍后刷新页面', 'error');
-      return;
-    }
-    if (xhr.status !== 200) return;
+  // Try CDN first (no rate limit), fall back to API (works without VPN)
+  tryCdn();
+  function tryCdn() {
+    var url = 'https://raw.githubusercontent.com/zhushisanxiangfangfamily/family-tree-test/master/data/messages.json?_=' + Date.now();
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.timeout = 8000;
+    xhr.onload = function() {
+      if (xhr.status === 200) { checkSessions(xhr.responseText); return; }
+      tryApi(); // CDN returned non-200, fall back
+    };
+    xhr.onerror = function() { tryApi(); };
+    xhr.ontimeout = function() { tryApi(); };
+    xhr.send();
+  }
+  function tryApi() {
+    var apiUrl = 'https://api.github.com/repos/zhushisanxiangfangfamily/family-tree-test/contents/data/messages.json?ref=master';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', apiUrl, true);
+    xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+    xhr.timeout = 10000;
+    xhr.onload = function() {
+      if (xhr.status !== 200) return;
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        if (resp.content) checkSessions(b64decode(resp.content));
+      } catch(e) {}
+    };
+    xhr.send();
+  }
+  function checkSessions(raw) {
     try {
-      var resp = JSON.parse(xhr.responseText);
-      if (!resp.content) return;
-      var parsed = JSON.parse(b64decode(resp.content));
-      var sessions = (parsed && parsed._sessions) ? parsed._sessions : {};
+      var msgFile = JSON.parse(raw);
+      var sessions = (msgFile && msgFile._sessions) ? msgFile._sessions : {};
       var existing = sessions[String(currentUser.memberId)];
       if (existing && existing.sessionId && existing.sessionId !== currentUser.sessionId) {
         logoutUser();
         showToast('⚠️ 该账号已在另一设备登录，当前会话已退出', 'warning');
       }
-    } catch(e) { console.log('checkWebSession: parse error', e); }
-  };
-  xhr.onerror = function() { console.log('checkWebSession: network error'); };
-  xhr.send();
+    } catch(e) {}
+  }
 }
 
 // Start web session check — runs even in background (browser throttles to ~60s)
