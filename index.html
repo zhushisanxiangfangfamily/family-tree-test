@@ -1764,21 +1764,25 @@ var _webSessionCheckErrorShown = false;
 function checkWebSession() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
-  // Ensure _ghDefaults is populated for the API call
-  if (!window._ghDefaults) window._ghDefaults = {};
-  if (!window._ghDefaults.repo) {
-    var cc = window.__CUSTOM_CONFIG__;
-    window._ghDefaults.repo = (cc && cc.ghRepo) || 'zhushisanxiangfangfamily/family-tree-test';
-  }
-  if (!window._ghDefaults.branch) window._ghDefaults.branch = 'master';
-  ghApiGet('data/messages.json', function(err, data) {
-    if (err) {
-      if (!_webSessionCheckErrorShown) { _webSessionCheckErrorShown = true; showToast('⚠️ 会话检查失败: ' + err, 'error'); }
+  // Use unauthenticated API call — no token dependency, 60 req/hr limit
+  // At 120s interval = 30 req/hr, well within limit
+  var apiUrl = 'https://api.github.com/repos/zhushisanxiangfangfamily/family-tree-test/contents/data/messages.json?ref=master';
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', apiUrl, true);
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.timeout = 15000;
+  xhr.onload = function() {
+    if (xhr.status === 403 && !_webSessionCheckErrorShown) {
+      // 403 = rate limited; show once
+      _webSessionCheckErrorShown = true;
+      showToast('⚠️ 会话检查被限流，请稍后刷新页面', 'error');
       return;
     }
-    if (!data || !data.content) { console.log('checkWebSession: no data/content'); return; }
+    if (xhr.status !== 200) return;
     try {
-      var parsed = JSON.parse(b64decode(data.content));
+      var resp = JSON.parse(xhr.responseText);
+      if (!resp.content) return;
+      var parsed = JSON.parse(b64decode(resp.content));
       var sessions = (parsed && parsed._sessions) ? parsed._sessions : {};
       var existing = sessions[String(currentUser.memberId)];
       if (existing && existing.sessionId && existing.sessionId !== currentUser.sessionId) {
@@ -1786,7 +1790,9 @@ function checkWebSession() {
         showToast('⚠️ 该账号已在另一设备登录，当前会话已退出', 'warning');
       }
     } catch(e) { console.log('checkWebSession: parse error', e); }
-  });
+  };
+  xhr.onerror = function() { console.log('checkWebSession: network error'); };
+  xhr.send();
 }
 
 // Start web session check — runs even in background (browser throttles to ~60s)
