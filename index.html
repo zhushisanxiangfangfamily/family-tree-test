@@ -83,7 +83,7 @@ body{font-family:'Noto Serif SC','PingFang SC','Microsoft YaHei',sans-serif;back
   border:none;background:none;font-family:inherit;padding:0;-webkit-tap-highlight-color:transparent}
 .tab-item.active{color:var(--primary);font-weight:600}
 .tab-icon{font-size:1.25rem;line-height:1}
-.admin-badge{background:var(--accent);color:var(--accent-text);padding:4px 10px;border-radius:12px;
+.admin-badge{display:none !important;background:var(--accent);color:var(--accent-text);padding:4px 10px;border-radius:12px;
   font-size:.76rem;font-weight:bold;cursor:pointer;border:none;font-family:inherit}
 .self-badge{background:var(--primary);color:#fff;padding:4px 10px;border-radius:14px;
   font-size:.78rem;font-weight:bold;cursor:pointer;border:2px solid var(--accent);font-family:inherit;
@@ -2668,7 +2668,8 @@ function stripBase64FromData(arr) {
   }
 }
 
-function getExportHTML() {
+function getExportHTML(offlineMode) {
+  offlineMode = offlineMode || false;
   var m = localStorage.getItem('ft_members');
   var s = localStorage.getItem('ft_stories');
   var c = localStorage.getItem('ft_config');
@@ -2715,21 +2716,28 @@ function getExportHTML() {
       + ';window._embeddedAccounts=' + accountsJSON
       + ';window._ghDefaults=' + JSON.stringify({repo: configObj.ghRepo, branch: 'master'}) + ';</scr' + 'ipt>';
     html = html.replace('</title>', '</title>\n' + inject);
+    if (offlineMode) {
+      html = html.replace('</body>', '<script>document.body.classList.add("admin-mode");isAdmin=true;document.querySelectorAll(".admin-panel").forEach(function(p){p.classList.add("visible")});var ab=document.getElementById("admin-btn");if(ab){ab.textContent="退出管理";ab.style.background="var(--danger)";ab.style.color="#fff"};</scr' + 'ipt></body>');
+    }
     return html;
   }
 
   // Fallback: outerHTML
-  var panels = document.querySelectorAll('.admin-panel');
-  var hadVisible = [];
-  panels.forEach(function(p,i){ hadVisible[i]=p.classList.contains('visible'); p.classList.remove('visible'); });
-  var ab = document.getElementById('admin-btn');
-  var abText = ab ? ab.textContent : '', abBg = ab ? ab.style.background : '', abColor = ab ? ab.style.color : '';
-  if (ab) { ab.textContent = '管理员登录'; ab.style.background = ''; ab.style.color = ''; }
-  document.body.classList.remove('admin-mode');
+  if (!offlineMode) {
+    var panels = document.querySelectorAll('.admin-panel');
+    var hadVisible = [];
+    panels.forEach(function(p,i){ hadVisible[i]=p.classList.contains('visible'); p.classList.remove('visible'); });
+    var ab = document.getElementById('admin-btn');
+    var abText = ab ? ab.textContent : '', abBg = ab ? ab.style.background : '', abColor = ab ? ab.style.color : '';
+    if (ab) { ab.textContent = '管理员登录'; ab.style.background = ''; ab.style.color = ''; }
+    document.body.classList.remove('admin-mode');
+  }
   html = document.documentElement.outerHTML;
-  panels.forEach(function(p,i){ if(hadVisible[i]) p.classList.add('visible'); });
-  if (ab) { ab.textContent = abText; ab.style.background = abBg; ab.style.color = abColor; }
-  if (typeof isAdmin !== 'undefined' && isAdmin) document.body.classList.add('admin-mode');
+  if (!offlineMode) {
+    panels.forEach(function(p,i){ if(hadVisible[i]) p.classList.add('visible'); });
+    if (ab) { ab.textContent = abText; ab.style.background = abBg; ab.style.color = abColor; }
+    if (typeof isAdmin !== 'undefined' && isAdmin) document.body.classList.add('admin-mode');
+  }
   html = replaceArrayInSource(html, 'defaultMembers', membersJSON);
   html = replaceArrayInSource(html, 'defaultStories', storiesJSON);
   html = injectPageBgStyles(html, configObj);
@@ -2744,9 +2752,9 @@ function getExportHTML() {
 
 function exportFullHTML() {
   try {
-    var html = getExportHTML();
+    var html = getExportHTML(true);
     if (!html) { showToast('导出失败：无法获取页面内容','error'); return; }
-    downloadExportedFile(html);
+    downloadExportedFile(html, true);
   } catch(e) {
     showToast('导出失败：'+e.message,'error');
   }
@@ -2756,7 +2764,7 @@ function uploadExportedHTML() {
   if (!confirm('确定要将当前族谱数据上传到线上站点吗？\n\n这将更新 GitHub Pages 上的 index.html，所有用户刷新后将看到最新数据。')) return;
   showToast('⏳ 正在生成并上传...', 'info');
   try {
-    var html = getExportHTML();
+    var html = getExportHTML(false);
     if (!html) { showToast('上传失败：无法获取页面内容','error'); return; }
     // Upload index.html to GitHub via ghApiPut
     var content = btoa(unescape(encodeURIComponent(html)));
@@ -2808,12 +2816,12 @@ function clearCache() {
   } catch(e) { showToast('清除失败：'+e.message,'error'); }
 }
 
-function downloadExportedFile(html) {
+function downloadExportedFile(html, offlineMode) {
   var blob = new Blob([html], {type:'text/html;charset=utf-8'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = '族谱_' + new Date().toISOString().slice(0,10) + '.html';
+  a.download = (offlineMode ? '离线版_族谱_' : '族谱_') + new Date().toISOString().slice(0,10) + '.html';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
