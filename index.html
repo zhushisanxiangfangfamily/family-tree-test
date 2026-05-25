@@ -981,7 +981,9 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
       <div class="account-list" id="account-list"><div class="account-item"><span><span class="account-item-name">朱鸿</span></span><span style="font-size:.7rem;color:var(--text-light);margin-left:8px">PIN: ****</span><button class="account-item-del" onclick="deleteAccount(108)">删除</button></div><div class="account-item"><span><span class="account-item-name">朱俊</span></span><span style="font-size:.7rem;color:var(--text-light);margin-left:8px">PIN: ****</span><button class="account-item-del" onclick="deleteAccount(107)">删除</button></div></div>
     </div>
 <button class="btn btn-primary" onclick="saveConfig()">保存设置</button>
-    <button class="btn btn-primary btn-sm" onclick="exportFullHTML()" style="background:#e67e22;margin-top:8px;width:100%">📥 导出完整族谱</button>
+    <button class="btn btn-primary btn-sm" onclick="exportFullHTML()" style="background:#e67e22;margin-top:8px;width:48%">📥 导出</button>
+    <button class="btn btn-primary btn-sm" onclick="uploadExportedHTML()" style="background:#1a7a3a;margin-top:8px;width:48%;float:right">📤 上传更新</button>
+    <div style="clear:both"></div>
   </div>
   <div class="section-title">家族寄语</div>
   <div style="background:#fff;border-radius:12px;padding:18px 20px;margin-bottom:16px;line-height:2;color:var(--text-light);font-size:.88rem;box-shadow:0 1px 3px rgba(0,0,0,.06)">
@@ -2666,73 +2668,108 @@ function stripBase64FromData(arr) {
   }
 }
 
-function exportFullHTML() {
+function getExportHTML() {
+  var m = localStorage.getItem('ft_members');
+  var s = localStorage.getItem('ft_stories');
+  var c = localStorage.getItem('ft_config');
+  // Prepare data
+  var membersArr = m ? JSON.parse(m) : JSON.parse(JSON.stringify(typeof defaultMembers !== 'undefined' ? defaultMembers : []));
+  var storiesArr = s ? JSON.parse(s) : JSON.parse(JSON.stringify(typeof defaultStories !== 'undefined' ? defaultStories : []));
+  stripBase64FromData(membersArr);
+  stripBase64FromData(storiesArr);
+  var membersJSON = JSON.stringify(membersArr);
+  var storiesJSON = JSON.stringify(storiesArr);
+  // Build clean config for export (no base64 backgrounds, no token)
+  var configObj = c ? JSON.parse(c) : {};
+  var bgKeys = ['bgHome','bgTree','bgMembers','bgStories','bgHero'];
+  for (var k = 0; k < bgKeys.length; k++) { delete configObj[bgKeys[k]]; }
+  // Keep ghRepo for standalone use but clear token
+  if (!configObj.ghRepo) configObj.ghRepo = 'zhushisanxiangfangfamily/family-tree-test';
+  configObj.ghToken = '';
+  // Embed accounts from getAccounts()
+  var accounts = getAccounts();
+  configObj.accounts = accounts;
+  var configJSON = JSON.stringify(configObj);
+  // Splash data
+  var splashJSON = JSON.stringify(typeof splashSlides !== 'undefined' && splashSlides.length ? splashSlides : typeof DEFAULT_SPLASH !== 'undefined' ? DEFAULT_SPLASH : []);
+  // Accounts as _embeddedAccounts for reliable loading
+  var accountsJSON = JSON.stringify(accounts);
+
+  // Get source HTML via sync XHR
+  var html = null;
   try {
-    var m = localStorage.getItem('ft_members');
-    var s = localStorage.getItem('ft_stories');
-    var c = localStorage.getItem('ft_config') || (window.__CUSTOM_CONFIG__ ? JSON.stringify(window.__CUSTOM_CONFIG__) : null);
-    // Strip base64 photos from members/stories before export
-    var membersArr = m ? JSON.parse(m) : JSON.parse(JSON.stringify(defaultMembers));
-    var storiesArr = s ? JSON.parse(s) : JSON.parse(JSON.stringify(defaultStories));
-    stripBase64FromData(membersArr);
-    stripBase64FromData(storiesArr);
-    var membersJSON = JSON.stringify(membersArr);
-    var storiesJSON = JSON.stringify(storiesArr);
-    // Strip large bg* fields from exported config to avoid re-embedding base64
-    var configObj = c ? JSON.parse(c) : {};
-    var bgKeys = ['bgHome','bgTree','bgMembers','bgStories','bgHero'];
-    for (var k = 0; k < bgKeys.length; k++) { delete configObj[bgKeys[k]]; }
-    var configJSON = JSON.stringify(configObj);
-    // Use in-memory splashSlides (loaded from IDB on startup) for export
-    var splashJSON = JSON.stringify(splashSlides.length ? splashSlides : DEFAULT_SPLASH);
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', window.location.href, false);
+    xhr.overrideMimeType('text/html;charset=utf-8');
+    xhr.send();
+    html = xhr.responseText;
+  } catch(e) { }
 
-    // Try XHR first (works for file:// in Chrome/Edge)
-    var html = null;
-    try {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', window.location.href, false);
-      xhr.overrideMimeType('text/html;charset=utf-8');
-      xhr.send();
-      html = xhr.responseText;
-    } catch(e) { }
-
-    if (html && html.length > 100) {
-      html = replaceArrayInSource(html, 'defaultMembers', membersJSON);
-      html = replaceArrayInSource(html, 'defaultStories', storiesJSON);
-      html = html.replace('IS_STANDALONE = true', 'IS_STANDALONE = true');
-      // Inject custom splash data via a reliable script tag override
-      html = injectPageBgStyles(html, c ? JSON.parse(c) : {});
-      html = html.replace('</title>', '</title>\n<script>window.__CUSTOM_SPLASH__=' + splashJSON + ';window.__CUSTOM_CONFIG__=' + configJSON + ';</scr' + 'ipt>');
-      downloadExportedFile(html);
-      return;
-    }
-
-    // Fallback: use outerHTML with bracket counting
-    // Temporarily hide admin state so it doesn't leak into export
-    var panels = document.querySelectorAll('.admin-panel');
-    var hadVisible = [];
-    panels.forEach(function(p,i){ hadVisible[i]=p.classList.contains('visible'); p.classList.remove('visible'); });
-    var ab = document.getElementById('admin-btn');
-    var abText = ab ? ab.textContent : '';
-    var abBg = ab ? ab.style.background : '';
-    var abColor = ab ? ab.style.color : '';
-    if (ab) { ab.textContent = '管理员登录'; ab.style.background = ''; ab.style.color = ''; }
-    document.body.classList.remove('admin-mode');
-    html = document.documentElement.outerHTML;
-    // Restore admin state
-    panels.forEach(function(p,i){ if(hadVisible[i]) p.classList.add('visible'); });
-    if (ab) { ab.textContent = abText; ab.style.background = abBg; ab.style.color = abColor; }
-    if (isAdmin) document.body.classList.add('admin-mode');
+  if (html && html.length > 100) {
     html = replaceArrayInSource(html, 'defaultMembers', membersJSON);
     html = replaceArrayInSource(html, 'defaultStories', storiesJSON);
-    html = html.replace('IS_STANDALONE = true', 'IS_STANDALONE = true');
-    // Inject custom splash data via a reliable script tag override
-    html = injectPageBgStyles(html, c ? JSON.parse(c) : {});
-      html = html.replace('</title>', '</title>\n<script>window.__CUSTOM_SPLASH__=' + splashJSON + ';window.__CUSTOM_CONFIG__=' + configJSON + ';</scr' + 'ipt>');
-    html = '<!DOCTYPE html>\n' + html;
+    html = injectPageBgStyles(html, configObj);
+    // Inject all data before </title>
+    var inject = '<script>window.__CUSTOM_SPLASH__=' + splashJSON
+      + ';window.__CUSTOM_CONFIG__=' + configJSON
+      + ';window._embeddedAccounts=' + accountsJSON
+      + ';window._ghDefaults=' + JSON.stringify({repo: configObj.ghRepo, branch: 'master'}) + ';</scr' + 'ipt>';
+    html = html.replace('</title>', '</title>\n' + inject);
+    return html;
+  }
+
+  // Fallback: outerHTML
+  var panels = document.querySelectorAll('.admin-panel');
+  var hadVisible = [];
+  panels.forEach(function(p,i){ hadVisible[i]=p.classList.contains('visible'); p.classList.remove('visible'); });
+  var ab = document.getElementById('admin-btn');
+  var abText = ab ? ab.textContent : '', abBg = ab ? ab.style.background : '', abColor = ab ? ab.style.color : '';
+  if (ab) { ab.textContent = '管理员登录'; ab.style.background = ''; ab.style.color = ''; }
+  document.body.classList.remove('admin-mode');
+  html = document.documentElement.outerHTML;
+  panels.forEach(function(p,i){ if(hadVisible[i]) p.classList.add('visible'); });
+  if (ab) { ab.textContent = abText; ab.style.background = abBg; ab.style.color = abColor; }
+  if (typeof isAdmin !== 'undefined' && isAdmin) document.body.classList.add('admin-mode');
+  html = replaceArrayInSource(html, 'defaultMembers', membersJSON);
+  html = replaceArrayInSource(html, 'defaultStories', storiesJSON);
+  html = injectPageBgStyles(html, configObj);
+  var inject = '<script>window.__CUSTOM_SPLASH__=' + splashJSON
+    + ';window.__CUSTOM_CONFIG__=' + configJSON
+    + ';window._embeddedAccounts=' + accountsJSON
+    + ';window._ghDefaults=' + JSON.stringify({repo: configObj.ghRepo, branch: 'master'}) + ';</scr' + 'ipt>';
+  html = html.replace('</title>', '</title>\n' + inject);
+  html = '<!DOCTYPE html>\n' + html;
+  return html;
+}
+
+function exportFullHTML() {
+  try {
+    var html = getExportHTML();
+    if (!html) { showToast('导出失败：无法获取页面内容','error'); return; }
     downloadExportedFile(html);
   } catch(e) {
     showToast('导出失败：'+e.message,'error');
+  }
+}
+
+function uploadExportedHTML() {
+  if (!confirm('确定要将当前族谱数据上传到线上站点吗？\n\n这将更新 GitHub Pages 上的 index.html，所有用户刷新后将看到最新数据。')) return;
+  showToast('⏳ 正在生成并上传...', 'info');
+  try {
+    var html = getExportHTML();
+    if (!html) { showToast('上传失败：无法获取页面内容','error'); return; }
+    // Upload index.html to GitHub via ghApiPut
+    var content = btoa(unescape(encodeURIComponent(html)));
+    // GET current SHA first
+    ghApiGet('index.html', function(err, data) {
+      var sha = (data && data.sha) ? data.sha : '';
+      ghApiPut('index.html', content, sha, function(err2, putData) {
+        if (err2) { showToast('上传失败：' + err2, 'error'); return; }
+        showToast('✅ 已上传！GitHub Pages 将在 1-2 分钟内更新', 'success');
+      });
+    });
+  } catch(e) {
+    showToast('上传失败：'+e.message,'error');
   }
 }
 
