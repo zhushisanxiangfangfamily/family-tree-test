@@ -1763,6 +1763,8 @@ function initGitHubSync() {
 function checkWebSession() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
+  // Grace period: skip check for first 10s after login to let uploadSession complete
+  if (currentUser.createdAt && Date.now() - currentUser.createdAt < 10000) return;
   // Try CDN first (no rate limit), fall back to API (works without VPN)
   tryCdn();
   function tryCdn() {
