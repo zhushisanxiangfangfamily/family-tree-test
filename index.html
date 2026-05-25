@@ -1763,6 +1763,14 @@ function initGitHubSync() {
 function checkWebSession() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
+  // Use authenticated GitHub API — 5000/hr limit, ETag/304 support, works without VPN
+  // Fallback: populate _ghDefaults from __CUSTOM_CONFIG__ if not already set
+  if (!window._ghDefaults) window._ghDefaults = {};
+  if (!window._ghDefaults.repo) {
+    var cc = window.__CUSTOM_CONFIG__;
+    window._ghDefaults.repo = (cc && cc.ghRepo) || 'zhushisanxiangfangfamily/family-tree-test';
+  }
+  if (!window._ghDefaults.branch) window._ghDefaults.branch = 'master';
   ghApiGet('data/sessions.json', function(err, data) {
     if (err || !data || !data.content) return;
     try {
