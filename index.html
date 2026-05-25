@@ -986,7 +986,7 @@ s.addEventListener("click",function(e){if(f){f=false;return;}h(e)});
       </div>
     </div>
     <div class="story-card">
-      <div class="story-img"><img loading="lazy" decoding="async" src="images/upload_e282a6937724.jpg" alt="环球旅行第一站"></div>
+      <div class="story-img"><img loading="lazy" decoding="async" src="images/upload_story_global_travel_1.png" alt="环球旅行第一站"></div>
       <div class="story-body">
         <div class="story-title">环球旅行第一站</div>
         <div class="story-date">2025年</div>
@@ -4682,7 +4682,7 @@ function compressImage(file, callback) {
   reader.onload = function(e) {
     var img = new Image();
     img.onload = function() {
-      var maxW = 400, maxH = 400;
+      var maxW = 1024, maxH = 1024;
       var w = img.width, h = img.height;
       if (w <= maxW && h <= maxH) { callback(e.target.result); return; }
       var ratio = Math.min(maxW / w, maxH / h);
@@ -4691,7 +4691,7 @@ function compressImage(file, callback) {
       canvas.width = cw; canvas.height = ch;
       var ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, cw, ch);
-      callback(canvas.toDataURL('image/jpeg', 0.5));
+      callback(canvas.toDataURL('image/jpeg', 0.75));
     };
     img.src = e.target.result;
   };
@@ -4700,7 +4700,7 @@ function compressImage(file, callback) {
 function handlePhotoUpload(e) {
   const file = e.target.files[0];
   if(!file) return;
-  if(file.size > 2*1024*1024) { showToast('图片不能超过 2MB','error'); return; }
+  if(file.size > 5*1024*1024) { showToast('图片不能超过 5MB','error'); return; }
   compressImage(file, function(compressed) { setPhotoPreview(compressed); });
 }
 function removePhoto() { setPhotoPreview(null); }
@@ -4726,7 +4726,7 @@ function setStoryPhotoPreview(src) {
 function handleStoryPhotoUpload(e) {
   const file = e.target.files[0];
   if(!file) return;
-  if(file.size > 2*1024*1024) { showToast('图片不能超过 2MB','error'); return; }
+  if(file.size > 5*1024*1024) { showToast('图片不能超过 5MB','error'); return; }
   compressImage(file, function(compressed) { setStoryPhotoPreview(compressed); });
 }
 function removeStoryPhoto() { setStoryPhotoPreview(null); }
@@ -4752,7 +4752,7 @@ function setSplashPhotoPreview(src) {
 function handleSplashPhotoUpload(e) {
   const file = e.target.files[0];
   if(!file) return;
-  if(file.size > 20*1024*1024) { showToast('图片不能超过 20MB','error'); return; }
+  if(file.size > 5*1024*1024) { showToast('图片不能超过 5MB','error'); return; }
   compressImage(file, function(compressed) { setSplashPhotoPreview(compressed); });
 }
 function removeSplashPhoto() { setSplashPhotoPreview(null); }
