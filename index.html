@@ -1763,12 +1763,10 @@ function initGitHubSync() {
 function checkWebSession() {
   var currentUser = getCurrentUser();
   if (!currentUser || !currentUser.sessionId) return;
-  // Use raw.githubusercontent.com (no token needed, GET only)
-  var repo = (window._ghDefaults && window._ghDefaults.repo) || 'zhushisanxiangfangfamily/family-tree-test';
-  var branch = (window._ghDefaults && window._ghDefaults.branch) || 'master';
-  var url = 'https://raw.githubusercontent.com/' + repo + '/' + branch + '/data/sessions.json';
   var xhr = new XMLHttpRequest();
-  xhr.open('GET', url + '?_=' + Date.now(), true);
+  // Use CDN — no auth, no API quota, cached but ~1min delay is acceptable
+  var url = 'https://raw.githubusercontent.com/zhushisanxiangfangfamily/family-tree-test/master/data/sessions.json?_=' + Date.now();
+  xhr.open('GET', url, true);
   xhr.timeout = 10000;
   xhr.onload = function() {
     if (xhr.status !== 200) return;
@@ -1790,7 +1788,7 @@ var _webSessionCheckInterval = null;
 function startWebSessionCheck() {
   if (_webSessionCheckInterval) return;
   checkWebSession();
-  _webSessionCheckInterval = setInterval(checkWebSession, 30000);
+  _webSessionCheckInterval = setInterval(checkWebSession, 120000);
 }
 function stopWebSessionCheck() {
   if (_webSessionCheckInterval) {
