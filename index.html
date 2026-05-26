@@ -1576,11 +1576,11 @@ function b64decode(str) {
 }
 
 function getMessagesUrl() {
-  return 'https://family-chat.2976340540.workers.dev/test/data/messages.json';
+  return 'https://api.sxfzp.xyz/test/data/messages.json';
 }
 
 function getSessionsUrl() {
-  return 'https://family-chat.2976340540.workers.dev/test/data/sessions.json';
+  return 'https://api.sxfzp.xyz/test/data/sessions.json';
 }
 
 function getSessionsRawUrl() {
@@ -1684,7 +1684,7 @@ function checkWebSession() {
     xhr.send();
   }
   function tryApi() {
-    var apiUrl = 'https://family-chat.2976340540.workers.dev/test/data/messages.json';
+    var apiUrl = 'https://api.sxfzp.xyz/test/data/messages.json';
     var xhr = new XMLHttpRequest();
     xhr.open('GET', apiUrl, true);
     xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
@@ -1868,7 +1868,7 @@ function ghApiGet(path, cb) {
   }
   // XHR fallback
   var xhr = new XMLHttpRequest();
-  var apiUrl = 'https://family-chat.2976340540.workers.dev/test/' + path;
+  var apiUrl = 'https://api.sxfzp.xyz/test/' + path;
   xhr.open('GET', apiUrl, true);
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
   if (_ghEtag) xhr.setRequestHeader('If-None-Match', _ghEtag);
@@ -1946,7 +1946,7 @@ function ghApiPut(path, content, sha, cb) {
   }
   // XHR fallback
   var xhr = new XMLHttpRequest();
-  xhr.open('PUT', 'https://family-chat.2976340540.workers.dev/test/' + path + '?_=' + Date.now(), true);
+  xhr.open('PUT', 'https://api.sxfzp.xyz/test/' + path + '?_=' + Date.now(), true);
   xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.timeout = 20000;
